@@ -1,0 +1,332 @@
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  X, Upload, Download, FileSpreadsheet, AlertCircle, 
+  CheckCircle, Trash2, Eye 
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { addTechStack, getTechStacks, setTechStacks } from "@/lib/storage";
+import { sampleTemplateData, TechStack } from "@/lib/mockData";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
+
+interface TechStackUploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+interface ParsedRow {
+  "Sr No.": number;
+  "Vendor Name": string;
+  "Product Name": string;
+  "Product Version": string;
+  "Email ID": string;
+}
+
+const EXPECTED_HEADERS = ["Sr No.", "Vendor Name", "Product Name", "Product Version", "Email ID"];
+
+const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) => {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [file, setFile] = useState<File | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const validateHeaders = (headers: string[]): boolean => {
+    const normalizedHeaders = headers.map(h => h.trim());
+    return EXPECTED_HEADERS.every(expected => 
+      normalizedHeaders.some(h => h.toLowerCase() === expected.toLowerCase())
+    );
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setError(null);
+    setFile(selectedFile);
+
+    const extension = selectedFile.name.split('.').pop()?.toLowerCase();
+
+    try {
+      if (extension === 'csv') {
+        // Parse CSV
+        const text = await selectedFile.text();
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const headers = results.meta.fields || [];
+            if (!validateHeaders(headers)) {
+              setError("Invalid file format. Headers must match: Sr No., Vendor Name, Product Name, Product Version, Email ID");
+              setParsedData([]);
+              return;
+            }
+            setParsedData(results.data as ParsedRow[]);
+          },
+          error: () => {
+            setError("Failed to parse CSV file");
+          }
+        });
+      } else if (extension === 'xlsx' || extension === 'xls') {
+        // Parse Excel
+        const buffer = await selectedFile.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet) as ParsedRow[];
+        
+        if (jsonData.length > 0) {
+          const headers = Object.keys(jsonData[0]);
+          if (!validateHeaders(headers)) {
+            setError("Invalid file format. Headers must match: Sr No., Vendor Name, Product Name, Product Version, Email ID");
+            setParsedData([]);
+            return;
+          }
+        }
+        
+        setParsedData(jsonData);
+      } else {
+        setError("Unsupported file format. Please upload CSV or Excel file.");
+      }
+    } catch (err) {
+      setError("Failed to read file");
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet(sampleTemplateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "tech_stack_template.xlsx");
+    
+    toast({
+      title: "Template downloaded",
+      description: "Fill in your tech stack data and upload.",
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (parsedData.length === 0) {
+      setError("No data to upload");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Add each row to storage
+      const existingStacks = getTechStacks();
+      const newStacks: TechStack[] = parsedData.map((row, index) => ({
+        id: crypto.randomUUID(),
+        srNo: existingStacks.length + index + 1,
+        vendorName: row["Vendor Name"],
+        productName: row["Product Name"],
+        productVersion: row["Product Version"],
+        emailId: row["Email ID"],
+        uploadedAt: new Date().toISOString()
+      }));
+
+      setTechStacks([...existingStacks, ...newStacks]);
+
+      toast({
+        title: "Upload successful",
+        description: `${parsedData.length} products added to inventory.`,
+      });
+
+      handleClose();
+    } catch (err) {
+      setError("Failed to upload data");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFile(null);
+    setParsedData([]);
+    setError(null);
+    onClose();
+  };
+
+  const handleRemoveRow = (index: number) => {
+    setParsedData(prev => prev.filter((_, i) => i !== index));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/50 backdrop-blur-sm"
+        onClick={handleClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Upload className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-xl font-display font-semibold text-navy">Upload Tech Stack</h2>
+                <p className="text-sm text-muted-foreground">Import your technology inventory</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+            {/* Download Template */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium text-sm">Need the template?</p>
+                  <p className="text-xs text-muted-foreground">Download our sample CSV/Excel template</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Template
+              </Button>
+            </div>
+
+            {/* Upload Area */}
+            <div 
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                file ? 'border-accent bg-accent/5' : 'border-border hover:border-muted-foreground'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileSelect}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              
+              {file ? (
+                <div className="flex items-center justify-center gap-3">
+                  <CheckCircle className="h-6 w-6 text-accent" />
+                  <span className="font-medium">{file.name}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFile(null);
+                      setParsedData([]);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  >
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="font-medium mb-1">Drop your file here or click to browse</p>
+                  <p className="text-sm text-muted-foreground">Supports CSV and Excel files</p>
+                </>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Preview */}
+            {parsedData.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Preview ({parsedData.length} rows)</span>
+                  </div>
+                </div>
+                
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Sr No.</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Vendor</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Product</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Version</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {parsedData.slice(0, 5).map((row, i) => (
+                          <tr key={i} className="hover:bg-muted/30">
+                            <td className="px-4 py-3">{row["Sr No."]}</td>
+                            <td className="px-4 py-3">{row["Vendor Name"]}</td>
+                            <td className="px-4 py-3">{row["Product Name"]}</td>
+                            <td className="px-4 py-3 font-mono text-xs">{row["Product Version"]}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{row["Email ID"]}</td>
+                            <td className="px-4 py-3">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-7 w-7"
+                                onClick={() => handleRemoveRow(i)}
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {parsedData.length > 5 && (
+                    <div className="px-4 py-2 bg-muted/30 text-center text-xs text-muted-foreground">
+                      And {parsedData.length - 5} more rows...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-muted/30">
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button 
+              variant="accent" 
+              onClick={handleSubmit}
+              disabled={parsedData.length === 0 || isUploading}
+            >
+              {isUploading ? 'Uploading...' : `Upload ${parsedData.length} Products`}
+            </Button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+export default TechStackUploadModal;
