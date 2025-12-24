@@ -2,62 +2,48 @@ import { motion } from "framer-motion";
 import { Shield, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
 const LandingPage = () => {
-  const clients = [
-    "TechCorp", "SecureNet", "DataGuard", "CyberShield", 
-    "InfoSec Pro", "NetDefend", "CloudSafe", "RiskZero"
-  ];
-
-  const testimonials = [
-    {
-      name: "Sarah Chen",
-      role: "CISO, TechCorp",
-      content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
-      avatar: "SC"
-    },
-    {
-      name: "Michael Rodriguez",
-      role: "Security Director, DataGuard",
-      content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
-      avatar: "MR"
-    },
-    {
-      name: "Emily Thompson",
-      role: "VP Engineering, SecureNet",
-      content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
-      avatar: "ET"
-    }
-  ];
-
-  const features = [
-    {
-      icon: ShieldAlert,
-      title: "Real-time Threat Detection",
-      description: "Instant alerts for vulnerabilities affecting your tech stack with CVSS scoring and severity analysis."
-    },
-    {
-      icon: ShieldCheck,
-      title: "Automated Advisory Mapping",
-      description: "Automatically correlate CVEs with your inventory and receive actionable remediation guidance."
-    },
-    {
-      icon: Shield,
-      title: "Smart Email Notifications",
-      description: "Critical advisory alerts sent directly to responsible teams based on your tech stack configuration."
-    }
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
+  const clients = ["TechCorp", "SecureNet", "DataGuard", "CyberShield", "InfoSec Pro", "NetDefend", "CloudSafe", "RiskZero"];
+  const testimonials = [{
+    name: "Sarah Chen",
+    role: "CISO, TechCorp",
+    content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
+    avatar: "SC"
+  }, {
+    name: "Michael Rodriguez",
+    role: "Security Director, DataGuard",
+    content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
+    avatar: "MR"
+  }, {
+    name: "Emily Thompson",
+    role: "VP Engineering, SecureNet",
+    content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
+    avatar: "ET"
+  }];
+  const features = [{
+    icon: ShieldAlert,
+    title: "Real-time Threat Detection",
+    description: "Instant alerts for vulnerabilities affecting your tech stack with CVSS scoring and severity analysis."
+  }, {
+    icon: ShieldCheck,
+    title: "Automated Advisory Mapping",
+    description: "Automatically correlate CVEs with your inventory and receive actionable remediation guidance."
+  }, {
+    icon: Shield,
+    title: "Smart Email Notifications",
+    description: "Critical advisory alerts sent directly to responsible teams based on your tech stack configuration."
+  }];
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          x: -20
+        }} animate={{
+          opacity: 1,
+          x: 0
+        }} className="flex items-center gap-2">
             <ShieldX className="h-8 w-8 text-accent" />
             <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
           </motion.div>
@@ -86,44 +72,53 @@ const LandingPage = () => {
         
         <div className="container mx-auto px-6 relative">
           <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.2
+          }}>
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-6">
                 <Shield className="h-4 w-4" />
                 Enterprise Vulnerability Intelligence
               </span>
             </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-navy leading-tight mb-6"
-            >
-              Protect Your Stack.
-              <br />
-              <span className="text-gradient">Before It's Too Late.</span>
+            <motion.h1 initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.3
+          }} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-navy leading-tight mb-6">Protect Your Buisness
+Before It's Too Late.<br />
+              <span className="text-gradient text-[#d43702]">Before It's Too Late.</span>
             </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-            >
-              Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. 
-              Stay ahead of threats with automated alerts and actionable insights.
-            </motion.p>
+            <motion.p initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.4
+          }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. Stay ahead of threats with automated alerts and actionable insights.</motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.5
+          }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/auth?mode=register">
                 <Button variant="hero" size="xl">
                   Get Started Free
@@ -136,12 +131,15 @@ const LandingPage = () => {
           </div>
 
           {/* Hero Visual */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-20 relative"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 40
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          delay: 0.6
+        }} className="mt-20 relative">
             <div className="relative mx-auto max-w-5xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-navy/5 to-accent/5" />
               <div className="p-8">
@@ -165,8 +163,7 @@ const LandingPage = () => {
                 </div>
                 
                 <div className="mt-6 space-y-3">
-                  {[1, 2, 3].map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 border border-border">
+                  {[1, 2, 3].map((_, i) => <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 border border-border">
                       <div className="h-8 w-8 rounded-full bg-severity-critical/20 flex items-center justify-center">
                         <ShieldAlert className="h-4 w-4 text-severity-critical" />
                       </div>
@@ -174,8 +171,7 @@ const LandingPage = () => {
                         <div className="h-3 w-48 bg-foreground/10 rounded animate-pulse" />
                       </div>
                       <div className="h-6 w-16 bg-severity-critical/20 rounded-full" />
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
             </div>
@@ -186,27 +182,29 @@ const LandingPage = () => {
       {/* Clients Section */}
       <section id="clients" className="py-16 border-y border-border bg-muted/30">
         <div className="container mx-auto px-6">
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center text-sm font-medium text-muted-foreground mb-8"
-          >
+          <motion.p initial={{
+          opacity: 0
+        }} whileInView={{
+          opacity: 1
+        }} viewport={{
+          once: true
+        }} className="text-center text-sm font-medium text-muted-foreground mb-8">
             TRUSTED BY SECURITY TEAMS WORLDWIDE
           </motion.p>
           <div className="flex flex-wrap items-center justify-center gap-12">
-            {clients.map((client, i) => (
-              <motion.div
-                key={client}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="text-xl font-display font-semibold text-muted-foreground/50"
-              >
+            {clients.map((client, i) => <motion.div key={client} initial={{
+            opacity: 0,
+            y: 10
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: i * 0.1
+          }} className="text-xl font-display font-semibold text-muted-foreground/50">
                 {client}
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
         </div>
       </section>
@@ -214,12 +212,15 @@ const LandingPage = () => {
       {/* Features Section */}
       <section id="features" className="py-24">
         <div className="container mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center max-w-2xl mx-auto mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-4xl font-display font-bold text-navy mb-4">
               Core Engine Secrets
             </h2>
@@ -229,15 +230,17 @@ const LandingPage = () => {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group relative bg-card rounded-2xl border border-border p-8 hover:shadow-xl transition-all duration-300"
-              >
+            {features.map((feature, i) => <motion.div key={feature.title} initial={{
+            opacity: 0,
+            y: 20
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: i * 0.1
+          }} className="group relative bg-card rounded-2xl border border-border p-8 hover:shadow-xl transition-all duration-300">
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
                 <div className="relative">
                   <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-accent/10 text-accent mb-6">
@@ -250,8 +253,7 @@ const LandingPage = () => {
                     {feature.description}
                   </p>
                 </div>
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
         </div>
       </section>
@@ -259,12 +261,15 @@ const LandingPage = () => {
       {/* Testimonials Section */}
       <section id="testimonials" className="py-24 bg-navy-gradient">
         <div className="container mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center max-w-2xl mx-auto mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-4xl font-display font-bold text-primary-foreground mb-4">
               Trusted by Security Leaders
             </h2>
@@ -274,15 +279,17 @@ const LandingPage = () => {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, i) => (
-              <motion.div
-                key={testimonial.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-primary-foreground/10 backdrop-blur-lg rounded-2xl border border-primary-foreground/10 p-8"
-              >
+            {testimonials.map((testimonial, i) => <motion.div key={testimonial.name} initial={{
+            opacity: 0,
+            y: 20
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: i * 0.1
+          }} className="bg-primary-foreground/10 backdrop-blur-lg rounded-2xl border border-primary-foreground/10 p-8">
                 <p className="text-primary-foreground/90 leading-relaxed mb-6">
                   "{testimonial.content}"
                 </p>
@@ -295,8 +302,7 @@ const LandingPage = () => {
                     <div className="text-sm text-primary-foreground/60">{testimonial.role}</div>
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
         </div>
       </section>
@@ -304,12 +310,15 @@ const LandingPage = () => {
       {/* CTA Section */}
       <section className="py-24">
         <div className="container mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative max-w-4xl mx-auto text-center bg-card rounded-3xl border border-border p-12 overflow-hidden"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          scale: 0.95
+        }} whileInView={{
+          opacity: 1,
+          scale: 1
+        }} viewport={{
+          once: true
+        }} className="relative max-w-4xl mx-auto text-center bg-card rounded-3xl border border-border p-12 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-navy/5" />
             <div className="relative">
               <h2 className="text-4xl font-display font-bold text-navy mb-4">
@@ -352,8 +361,6 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingPage;
