@@ -108,6 +108,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     removeUser();
+    // Clear visited flag so landing page shows again for logged out users
+    localStorage.removeItem('vulnerix_visited');
   };
 
   return (
