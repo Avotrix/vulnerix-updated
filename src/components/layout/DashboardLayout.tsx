@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   LayoutDashboard, FileText, Package, Settings, 
-  LogOut, User, ChevronDown, Bell, Phone
+  LogOut, User, ChevronDown, Bell, Phone, Shield, X
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +14,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { getAdvisories } from "@/lib/storage";
+import { Advisory } from "@/lib/mockData";
+import { SeverityBadge } from "@/components/ui/severity-badge";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 interface DashboardLayoutProps {
@@ -25,6 +33,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [notifications, setNotifications] = useState<Advisory[]>([]);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  useEffect(() => {
+    const advisories = getAdvisories();
+    // Get critical and high severity advisories as notifications
+    const criticalAdvisories = advisories.filter(
+      (a) => a.Severity === 'Critical' || a.Severity === 'High'
+    ).slice(0, 5);
+    setNotifications(criticalAdvisories);
+  }, [location.pathname]);
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -69,10 +88,78 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-severity-critical rounded-full" />
-            </Button>
+            <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-1 right-1 h-4 w-4 bg-severity-critical rounded-full flex items-center justify-center text-[10px] text-white font-bold">
+                      {notifications.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0 bg-card">
+                <div className="flex items-center justify-between p-4 border-b border-border">
+                  <h3 className="font-semibold text-foreground">Notifications</h3>
+                  <span className="text-xs text-muted-foreground">{notifications.length} alerts</span>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground text-sm">
+                      No critical alerts
+                    </div>
+                  ) : (
+                    notifications.map((advisory) => (
+                      <div
+                        key={advisory.cve_id}
+                        className="p-3 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => {
+                          setIsNotificationOpen(false);
+                          navigate('/advisories');
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                            advisory.Severity === 'Critical' ? 'bg-severity-critical/10' : 'bg-severity-high/10'
+                          )}>
+                            <Shield className={cn(
+                              "h-4 w-4",
+                              advisory.Severity === 'Critical' ? 'text-severity-critical' : 'text-severity-high'
+                            )} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono text-xs font-semibold text-foreground">
+                                {advisory.cve_id}
+                              </span>
+                              <SeverityBadge severity={advisory.Severity} />
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {advisory.tech_stack_product}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-3 border-t border-border">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => {
+                      setIsNotificationOpen(false);
+                      navigate('/advisories');
+                    }}
+                  >
+                    View All Advisories
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

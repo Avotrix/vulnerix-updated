@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { 
   Shield, Package, AlertTriangle, AlertCircle, Info,
-  TrendingUp, Bell, ExternalLink, BarChart3
+  TrendingUp, Bell, ExternalLink, BarChart3, Activity
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { SeverityBadge } from "@/components/ui/severity-badge";
@@ -28,6 +29,15 @@ const Dashboard = () => {
     setStats(getStats());
     const advisories = getAdvisories();
     setRecentAdvisories(advisories.slice(0, 5));
+  }, []);
+
+  // Calculate overall risk level
+  const overallRiskLevel = useMemo(() => {
+    if (stats.critical > 0) return { level: 'CRITICAL', color: 'text-severity-critical', bg: 'bg-severity-critical/10' };
+    if (stats.high > 0) return { level: 'HIGH', color: 'text-severity-high', bg: 'bg-severity-high/10' };
+    if (stats.medium > 0) return { level: 'MEDIUM', color: 'text-severity-medium', bg: 'bg-severity-medium/10' };
+    if (stats.low > 0) return { level: 'LOW', color: 'text-severity-low', bg: 'bg-severity-low/10' };
+    return { level: 'NONE', color: 'text-muted-foreground', bg: 'bg-muted' };
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -98,69 +108,70 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <StatCard
-              title="Total Products"
-              value={stats.totalProducts}
-              icon={Package}
-              variant="accent"
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <StatCard
-              title="Critical"
-              value={stats.critical}
-              icon={AlertCircle}
-              variant="critical"
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <StatCard
-              title="High"
-              value={stats.high}
-              icon={AlertTriangle}
-              variant="high"
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <StatCard
-              title="Medium"
-              value={stats.medium}
-              icon={TrendingUp}
-              variant="medium"
-            />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <StatCard
-              title="Low"
-              value={stats.low}
-              icon={Info}
-              variant="low"
-            />
-          </motion.div>
-        </div>
+        {/* Security Overview - Matching the reference design */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-card rounded-xl border border-border p-6"
+        >
+          <div className="mb-6">
+            <h2 className="text-xl font-display font-bold text-foreground">Security Overview</h2>
+            <p className="text-sm text-muted-foreground">Monitor your organization's software vulnerabilities and security advisories.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Software/Products */}
+            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-sm font-medium text-accent">Total Software</span>
+                <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <Package className="h-5 w-5 text-accent" />
+                </div>
+              </div>
+              <div className="text-4xl font-display font-bold text-foreground mb-1">{stats.totalProducts}</div>
+              <span className="text-xs text-muted-foreground">Across all systems</span>
+            </div>
+
+            {/* Total Advisories */}
+            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-sm font-medium text-severity-medium">Total Advisories</span>
+                <div className="h-10 w-10 rounded-lg bg-severity-medium/10 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-severity-medium" />
+                </div>
+              </div>
+              <div className="text-4xl font-display font-bold text-foreground mb-1">{stats.critical + stats.high + stats.medium + stats.low}</div>
+              <span className="text-xs text-muted-foreground">Active vulnerabilities</span>
+            </div>
+
+            {/* High Risk Count */}
+            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-sm font-medium text-severity-critical">High Risk</span>
+                <div className="h-10 w-10 rounded-lg bg-severity-critical/10 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-severity-critical" />
+                </div>
+              </div>
+              <div className="text-4xl font-display font-bold text-foreground mb-1">{stats.critical + stats.high}</div>
+              <span className="text-xs text-muted-foreground">Immediate attention required</span>
+            </div>
+
+            {/* Overall Risk Level */}
+            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-sm font-medium text-muted-foreground">Overall Risk Level</span>
+                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", overallRiskLevel.bg)}>
+                  <Activity className={cn("h-5 w-5", overallRiskLevel.color)} />
+                </div>
+              </div>
+              <div className={cn("text-3xl font-display font-bold mb-1", overallRiskLevel.color)}>
+                {overallRiskLevel.level}
+              </div>
+              <span className="text-xs text-muted-foreground">Based on current advisories</span>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
