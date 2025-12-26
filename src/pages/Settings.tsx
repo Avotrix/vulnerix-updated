@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Bell, Moon, Sun, Shield, Save } from "lucide-react";
+import { Bell, Sun, Moon, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/contexts/ThemeContext";
+import { getUser } from "@/lib/storage";
 
 const SETTINGS_KEY = 'vulnerix_settings';
 
@@ -36,13 +38,16 @@ const defaultSettings: SettingsData = {
 
 const Settings = () => {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
+  const user = getUser();
 
   useEffect(() => {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
-      setSettings(JSON.parse(stored));
+      const parsedSettings = JSON.parse(stored);
+      setSettings(parsedSettings);
     }
   }, []);
 
@@ -51,15 +56,29 @@ const Settings = () => {
     setTimeout(() => {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       setIsSaving(false);
-      toast({
-        title: "Settings saved",
-        description: "Your preferences have been updated.",
-      });
+      
+      // Show notification status
+      if (settings.emailNotifications && user?.email) {
+        toast({
+          title: "Settings saved",
+          description: `Notifications will be sent to ${user.email}`,
+        });
+      } else {
+        toast({
+          title: "Settings saved",
+          description: "Your preferences have been updated.",
+        });
+      }
     }, 500);
   };
 
   const updateSetting = <K extends keyof SettingsData>(key: K, value: SettingsData[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    
+    // Apply theme immediately when changed
+    if (key === 'theme') {
+      setTheme(value as 'light' | 'dark' | 'system');
+    }
   };
 
   return (
@@ -67,7 +86,7 @@ const Settings = () => {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-display font-bold text-navy">Settings</h1>
+          <h1 className="text-3xl font-display font-bold text-foreground">Settings</h1>
           <p className="text-muted-foreground">Configure your preferences</p>
         </div>
 
@@ -83,8 +102,11 @@ const Settings = () => {
                 <Bell className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-navy">Notifications</h2>
-                <p className="text-sm text-muted-foreground">Manage your notification preferences</p>
+                <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage your notification preferences
+                  {user?.email && <span className="block text-xs mt-1">Notifications will be sent to: {user.email}</span>}
+                </p>
               </div>
             </div>
           </div>
@@ -135,10 +157,14 @@ const Settings = () => {
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Sun className="h-5 w-5 text-accent" />
+                {theme === 'dark' ? (
+                  <Moon className="h-5 w-5 text-accent" />
+                ) : (
+                  <Sun className="h-5 w-5 text-accent" />
+                )}
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-navy">Display</h2>
+                <h2 className="text-lg font-semibold text-foreground">Display</h2>
                 <p className="text-sm text-muted-foreground">Customize your display preferences</p>
               </div>
             </div>
@@ -157,9 +183,19 @@ const Settings = () => {
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="light">Light</SelectItem>
-                  <SelectItem value="dark">Dark</SelectItem>
+                <SelectContent className="bg-card">
+                  <SelectItem value="light">
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4" />
+                      Light
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dark">
+                    <div className="flex items-center gap-2">
+                      <Moon className="h-4 w-4" />
+                      Dark
+                    </div>
+                  </SelectItem>
                   <SelectItem value="system">System</SelectItem>
                 </SelectContent>
               </Select>
@@ -189,7 +225,7 @@ const Settings = () => {
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card">
                     <SelectItem value="1">1 minute</SelectItem>
                     <SelectItem value="5">5 minutes</SelectItem>
                     <SelectItem value="15">15 minutes</SelectItem>

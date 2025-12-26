@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { 
   Shield, Package, AlertTriangle, AlertCircle, Info,
-  TrendingUp, Bell, ExternalLink
+  TrendingUp, Bell, ExternalLink, BarChart3
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,14 @@ import { SeverityBadge } from "@/components/ui/severity-badge";
 import { getStats, getAdvisories } from "@/lib/storage";
 import { Advisory } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(getStats());
@@ -30,13 +38,62 @@ const Dashboard = () => {
     });
   };
 
+  // Chart data
+  const severityChartData = useMemo(() => [
+    { name: "Critical", value: stats.critical, fill: "hsl(0 84% 60%)" },
+    { name: "High", value: stats.high, fill: "hsl(25 95% 53%)" },
+    { name: "Medium", value: stats.medium, fill: "hsl(45 93% 47%)" },
+    { name: "Low", value: stats.low, fill: "hsl(142 71% 45%)" },
+  ], [stats]);
+
+  const trendChartData = useMemo(() => {
+    const advisories = getAdvisories();
+    const monthlyData: Record<string, { critical: number; high: number; medium: number; low: number }> = {};
+    
+    advisories.forEach((advisory) => {
+      const date = new Date(advisory.lastModified);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { critical: 0, high: 0, medium: 0, low: 0 };
+      }
+      
+      const severity = advisory.Severity.toLowerCase() as keyof typeof monthlyData[typeof monthKey];
+      if (severity in monthlyData[monthKey]) {
+        monthlyData[monthKey][severity]++;
+      }
+    });
+
+    return Object.entries(monthlyData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([month, data]) => ({
+        month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
+        ...data,
+      }));
+  }, []);
+
+  const chartConfig = {
+    critical: { label: "Critical", color: "hsl(0 84% 60%)" },
+    high: { label: "High", color: "hsl(25 95% 53%)" },
+    medium: { label: "Medium", color: "hsl(45 93% 47%)" },
+    low: { label: "Low", color: "hsl(142 71% 45%)" },
+  };
+
+  const pieChartConfig = {
+    Critical: { label: "Critical", color: "hsl(0 84% 60%)" },
+    High: { label: "High", color: "hsl(25 95% 53%)" },
+    Medium: { label: "Medium", color: "hsl(45 93% 47%)" },
+    Low: { label: "Low", color: "hsl(142 71% 45%)" },
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-navy">Dashboard</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Monitor your vulnerability landscape</p>
           </div>
         </div>
@@ -105,11 +162,123 @@ const Dashboard = () => {
           </motion.div>
         </div>
 
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Severity Distribution Pie Chart */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-card rounded-xl border border-border overflow-hidden"
+          >
+            <div className="flex items-center gap-3 p-6 border-b border-border">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-lg font-display font-semibold text-foreground">Severity Distribution</h2>
+                <p className="text-sm text-muted-foreground">Vulnerabilities by severity level</p>
+              </div>
+            </div>
+            <div className="p-6">
+              <ChartContainer config={pieChartConfig} className="h-[280px] w-full">
+                <PieChart>
+                  <Pie
+                    data={severityChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={4}
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}
+                  >
+                    {severityChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </PieChart>
+              </ChartContainer>
+            </div>
+          </motion.div>
+
+          {/* Vulnerability Trend Chart */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-card rounded-xl border border-border overflow-hidden"
+          >
+            <div className="flex items-center gap-3 p-6 border-b border-border">
+              <div className="h-10 w-10 rounded-lg bg-severity-high/10 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-severity-high" />
+              </div>
+              <div>
+                <h2 className="text-lg font-display font-semibold text-foreground">Vulnerability Trends</h2>
+                <p className="text-sm text-muted-foreground">Monthly vulnerability distribution</p>
+              </div>
+            </div>
+            <div className="p-6">
+              <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                <AreaChart data={trendChartData}>
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="critical"
+                    stackId="1"
+                    stroke="hsl(0 84% 60%)"
+                    fill="hsl(0 84% 60% / 0.6)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="high"
+                    stackId="1"
+                    stroke="hsl(25 95% 53%)"
+                    fill="hsl(25 95% 53% / 0.6)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="medium"
+                    stackId="1"
+                    stroke="hsl(45 93% 47%)"
+                    fill="hsl(45 93% 47% / 0.6)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="low"
+                    stackId="1"
+                    stroke="hsl(142 71% 45%)"
+                    fill="hsl(142 71% 45% / 0.6)"
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </AreaChart>
+              </ChartContainer>
+            </div>
+          </motion.div>
+        </div>
+
         {/* Recent Advisories */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.8 }}
           className="bg-card rounded-xl border border-border overflow-hidden"
         >
           <div className="flex items-center justify-between p-6 border-b border-border">
@@ -118,7 +287,7 @@ const Dashboard = () => {
                 <Bell className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <h2 className="text-lg font-display font-semibold text-navy">Recent Advisories</h2>
+                <h2 className="text-lg font-display font-semibold text-foreground">Recent Advisories</h2>
                 <p className="text-sm text-muted-foreground">Latest vulnerability alerts</p>
               </div>
             </div>
@@ -153,7 +322,7 @@ const Dashboard = () => {
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="font-mono text-sm font-semibold text-navy">
+                      <span className="font-mono text-sm font-semibold text-foreground">
                         {advisory.cve_id}
                       </span>
                       <SeverityBadge severity={advisory.Severity} />
