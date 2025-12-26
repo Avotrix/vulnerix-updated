@@ -1,22 +1,19 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ShieldX, Mail, Lock, User, Building2, Eye, EyeOff, ArrowLeft, Home } from "lucide-react";
+import { Mail, Lock, User, Building2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { hasVisited } from "@/lib/storage";
+import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, register, isAuthenticated } = useAuth();
+  const { login, register } = useAuth();
   const { toast } = useToast();
-  
-  // Determine where "Back to home" should go
-  const canGoToLanding = !hasVisited() && !isAuthenticated;
   
   const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'register');
   const [showPassword, setShowPassword] = useState(false);
@@ -97,27 +94,20 @@ const AuthPage = () => {
       {/* Left Panel - Form */}
       <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 py-12">
         <div className="max-w-md w-full mx-auto">
-          {canGoToLanding ? (
-            <Link 
-              to="/" 
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to home
-            </Link>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
-              <Home className="h-4 w-4" />
-              <span>Sign in to access your dashboard</span>
-            </div>
-          )}
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to home
+          </Link>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <div className="flex items-center gap-2 mb-8">
-              <ShieldX className="h-8 w-8 text-accent" />
+              <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
               <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
             </div>
 
@@ -252,7 +242,7 @@ const AuthPage = () => {
             transition={{ delay: 0.2 }}
           >
             <div className="inline-flex items-center justify-center h-24 w-24 rounded-2xl bg-accent/20 mb-8">
-              <ShieldX className="h-12 w-12 text-accent" />
+              <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-16 w-16" />
             </div>
             
             <h2 className="text-3xl font-display font-bold text-primary-foreground mb-4">

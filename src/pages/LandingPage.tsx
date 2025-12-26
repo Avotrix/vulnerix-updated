@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
+import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 const LandingPage = () => {
   const [showDemo, setShowDemo] = useState(false);
@@ -51,7 +52,7 @@ const LandingPage = () => {
           opacity: 1,
           x: 0
         }} className="flex items-center gap-2">
-            <ShieldX className="h-8 w-8 text-accent" />
+            <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
             <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
           </motion.div>
           
@@ -354,7 +355,7 @@ Before It's Too Late.<br />
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <ShieldX className="h-6 w-6 text-accent" />
+              <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-8 w-8" />
               <span className="text-xl font-display font-bold text-navy">Vulnerix</span>
             </div>
             <p className="text-sm text-muted-foreground">

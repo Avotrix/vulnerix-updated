@@ -1,33 +1,91 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, ShieldAlert, Database, BarChart3 } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, LayoutDashboard, Database, ShieldAlert, User, Settings, Phone, Upload, Edit, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 interface DemoStep {
   title: string;
   description: string;
   icon: React.ElementType;
-  highlight: string;
+  features: string[];
 }
 
 const demoSteps: DemoStep[] = [
   {
     title: "Dashboard Overview",
-    description: "Get a quick snapshot of your security posture. View total products, critical vulnerabilities, and recent advisories at a glance.",
-    icon: BarChart3,
-    highlight: "dashboard"
+    description: "Your central command center for security monitoring. Get a real-time snapshot of your entire security posture at a glance.",
+    icon: LayoutDashboard,
+    features: [
+      "Total Products: View count of all monitored software in your tech stack",
+      "Critical Vulnerabilities: See high-priority threats requiring immediate attention",
+      "Severity Breakdown: Visual charts showing Critical, High, Medium, and Low severity distribution",
+      "Recent Advisories: Quick access to the latest vulnerability alerts affecting your stack",
+      "Trend Analysis: Historical graphs showing vulnerability trends over time"
+    ]
   },
   {
     title: "Tech Stack Management",
-    description: "Upload and manage your technology inventory. Import via CSV/Excel or add entries manually. Track vendors, products, and versions.",
+    description: "Manage your complete technology inventory. Upload, edit, and organize all software assets your organization uses.",
     icon: Database,
-    highlight: "tech-stack"
+    features: [
+      "Upload Tech Stack: Import via CSV/Excel with template enforcement (Sr No., Vendor Name, Product Name, Product Version, Email ID)",
+      "Manual Entry: Add individual entries with Organization, Vendor, Product, Version, and Email ID fields",
+      "Edit Entries: Update Vendor, Product, Version, and Email ID (Organization is locked)",
+      "Search & Filter: Quickly find specific products in your inventory",
+      "Delete Items: Remove outdated or incorrect entries with confirmation"
+    ]
   },
   {
     title: "Security Advisories",
-    description: "Browse and filter vulnerability advisories. Get detailed CVE information, severity scores, and remediation guidance for your stack.",
+    description: "Browse comprehensive vulnerability intelligence. Filter, search, and analyze CVEs affecting your tech stack with detailed remediation guidance.",
     icon: ShieldAlert,
-    highlight: "advisories"
+    features: [
+      "CVE Database: Access detailed vulnerability information including CVSS scores",
+      "Severity Filtering: Filter by Critical, High, Medium, or Low severity",
+      "Search Functionality: Find specific CVEs, vendors, or products",
+      "Pagination: Browse advisories with 5 items per page",
+      "View All: Open complete advisory list in a new tab",
+      "Version Information: See affected version ranges when available"
+    ]
+  },
+  {
+    title: "Profile & Settings",
+    description: "Customize your Vulnerix experience. Manage your personal information and configure notification preferences.",
+    icon: User,
+    features: [
+      "Profile Management: Update your name, email, organization, phone, and role",
+      "Email Notifications: Toggle alerts for new vulnerabilities",
+      "Critical Alerts: Enable instant notifications for high-severity threats",
+      "Weekly Digest: Receive weekly summary reports",
+      "Theme Settings: Choose between light, dark, or system themes",
+      "Auto-Refresh: Configure automatic dashboard data refresh intervals"
+    ]
+  },
+  {
+    title: "Contact & Support",
+    description: "Get help when you need it. Reach out to our security team for assistance, questions, or feedback.",
+    icon: Phone,
+    features: [
+      "Contact Form: Submit inquiries with subject and detailed message",
+      "Email Support: Direct email contact for urgent matters",
+      "Phone Support: Call our support line during business hours",
+      "Office Location: Find our headquarters address",
+      "Confirmation: Receive acknowledgment when your message is sent"
+    ]
+  },
+  {
+    title: "Key Features Summary",
+    description: "Vulnerix provides enterprise-grade vulnerability intelligence to protect your organization proactively.",
+    icon: Bell,
+    features: [
+      "Real-time Monitoring: Continuous scanning for new vulnerabilities",
+      "Smart Alerts: Automated email notifications to responsible team members",
+      "Data Persistence: All data stored securely in your browser",
+      "No Backend Required: Frontend-only solution for maximum privacy",
+      "Template-Based Upload: Standardized CSV/Excel import format",
+      "Responsive Design: Works seamlessly on desktop and mobile devices"
+    ]
   }
 ];
 
@@ -81,7 +139,7 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
           <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
@@ -99,9 +157,12 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
                   <Icon className="h-7 w-7 text-accent" />
                 </div>
                 <div>
-                  <p className="text-accent text-sm font-medium">
-                    Step {currentStep + 1} of {demoSteps.length}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <img src={vulnerixLogo} alt="Vulnerix" className="h-5 w-5" />
+                    <p className="text-accent text-sm font-medium">
+                      Step {currentStep + 1} of {demoSteps.length}
+                    </p>
+                  </div>
                   <h3 className="text-xl font-display font-bold text-primary-foreground">
                     {step.title}
                   </h3>
@@ -115,18 +176,20 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
                 {step.description}
               </p>
 
-              {/* Demo Visual */}
+              {/* Features List */}
               <div className="bg-muted/50 rounded-xl p-4 border border-border mb-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-2 w-2 rounded-full bg-severity-critical" />
-                  <div className="h-2 w-2 rounded-full bg-severity-high" />
-                  <div className="h-2 w-2 rounded-full bg-severity-medium" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-3/4 bg-foreground/10 rounded animate-pulse" />
-                  <div className="h-3 w-1/2 bg-foreground/10 rounded animate-pulse" />
-                  <div className="h-3 w-2/3 bg-foreground/10 rounded animate-pulse" />
-                </div>
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                  Key Features & Options
+                </h4>
+                <ul className="space-y-2">
+                  {step.features.map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <ChevronRight className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {/* Progress dots */}

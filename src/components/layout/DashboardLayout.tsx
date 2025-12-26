@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { 
-  ShieldX, LayoutDashboard, FileText, Package, Settings, 
+  LayoutDashboard, FileText, Package, Settings, 
   LogOut, User, ChevronDown, Bell, Phone
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -44,7 +45,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="h-16 px-6 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <ShieldX className="h-8 w-8 text-accent" />
+              <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
               <span className="text-xl font-display font-bold text-navy">Vulnerix</span>
             </Link>
 
