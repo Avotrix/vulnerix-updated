@@ -31,6 +31,7 @@ export interface Advisory {
 export interface TechStack {
   id: string;
   srNo: number;
+  organization?: string;
   vendorName: string;
   productName: string;
   productVersion: string;
@@ -316,6 +317,7 @@ export const mockTechStacks: TechStack[] = [
   {
     id: "1",
     srNo: 1,
+    organization: "Acme Corp",
     vendorName: "Apache",
     productName: "Log4j",
     productVersion: "2.14.1",
@@ -325,6 +327,7 @@ export const mockTechStacks: TechStack[] = [
   {
     id: "2",
     srNo: 2,
+    organization: "TechStart Inc",
     vendorName: "Oracle",
     productName: "MySQL Connector/J",
     productVersion: "8.0.28",
@@ -334,6 +337,7 @@ export const mockTechStacks: TechStack[] = [
   {
     id: "3",
     srNo: 3,
+    organization: "DevOps Solutions",
     vendorName: "Facebook",
     productName: "React",
     productVersion: "17.0.2",
@@ -343,6 +347,7 @@ export const mockTechStacks: TechStack[] = [
   {
     id: "4",
     srNo: 4,
+    organization: "CloudHost Ltd",
     vendorName: "Nginx",
     productName: "Nginx",
     productVersion: "1.21.0",
@@ -352,6 +357,7 @@ export const mockTechStacks: TechStack[] = [
   {
     id: "5",
     srNo: 5,
+    organization: "API Solutions",
     vendorName: "Node.js",
     productName: "Node.js",
     productVersion: "18.0.0",

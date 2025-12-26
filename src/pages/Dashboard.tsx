@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Shield, Package, AlertTriangle, AlertCircle, Info,
-  TrendingUp, Bell, Upload, ExternalLink
+  TrendingUp, Bell, ExternalLink
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,10 @@ import { SeverityBadge } from "@/components/ui/severity-badge";
 import { getStats, getAdvisories } from "@/lib/storage";
 import { Advisory } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import TechStackUploadModal from "@/components/modals/TechStackUploadModal";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(getStats());
   const [recentAdvisories, setRecentAdvisories] = useState<Advisory[]>([]);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   useEffect(() => {
     setStats(getStats());
@@ -41,10 +39,6 @@ const Dashboard = () => {
             <h1 className="text-3xl font-display font-bold text-navy">Dashboard</h1>
             <p className="text-muted-foreground">Monitor your vulnerability landscape</p>
           </div>
-          <Button variant="accent" onClick={() => setIsUploadModalOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Tech Stack
-          </Button>
         </div>
 
         {/* Stats Grid */}
@@ -181,11 +175,6 @@ const Dashboard = () => {
           </div>
         </motion.div>
       </div>
-
-      <TechStackUploadModal 
-        isOpen={isUploadModalOpen} 
-        onClose={() => setIsUploadModalOpen(false)} 
-      />
     </DashboardLayout>
   );
 };

@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
-  Package, Search, Edit2, Trash2, Save, X, Mail, Plus
+  Package, Search, Edit2, Trash2, Save, X, Mail, Plus, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getTechStacks, updateTechStack, deleteTechStack } from "@/lib/storage";
-import { TechStack } from "@/lib/mockData";
+import { getTechStacks, updateTechStack, deleteTechStack, addTechStack } from "@/lib/storage";
+import { TechStack as TechStackType } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import TechStackUploadModal from "@/components/modals/TechStackUploadModal";
+import ManualTechStackModal from "@/components/modals/ManualTechStackModal";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -22,13 +23,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const Inventory = () => {
+const TechStack = () => {
   const { toast } = useToast();
-  const [techStacks, setTechStacks] = useState<TechStack[]>([]);
+  const [techStacks, setTechStacks] = useState<TechStackType[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<TechStack>>({});
+  const [editData, setEditData] = useState<Partial<TechStackType>>({});
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
 
   useEffect(() => {
     loadTechStacks();
@@ -41,12 +43,14 @@ const Inventory = () => {
   const filteredStacks = techStacks.filter(stack => 
     stack.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     stack.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    stack.productVersion.toLowerCase().includes(searchQuery.toLowerCase())
+    stack.productVersion.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (stack.organization?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleEdit = (stack: TechStack) => {
+  const handleEdit = (stack: TechStackType) => {
     setEditingId(stack.id);
     setEditData({
+      vendorName: stack.vendorName,
       productName: stack.productName,
       productVersion: stack.productVersion,
       emailId: stack.emailId
@@ -71,7 +75,7 @@ const Inventory = () => {
     
     toast({
       title: "Deleted",
-      description: "The product has been removed from inventory.",
+      description: "The product has been removed from tech stack.",
     });
   };
 
@@ -80,28 +84,50 @@ const Inventory = () => {
     setEditData({});
   };
 
+  const handleManualAdd = (data: { organization: string; vendorName: string; productName: string; productVersion: string; emailId: string }) => {
+    addTechStack({
+      organization: data.organization,
+      vendorName: data.vendorName,
+      productName: data.productName,
+      productVersion: data.productVersion,
+      emailId: data.emailId,
+      srNo: techStacks.length + 1
+    });
+    loadTechStacks();
+    toast({
+      title: "Product added",
+      description: "The product has been added to your tech stack.",
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-navy">Inventory</h1>
+            <h1 className="text-3xl font-display font-bold text-navy">Tech Stack</h1>
             <p className="text-muted-foreground">
               {techStacks.length} products in your tech stack
             </p>
           </div>
-          <Button variant="accent" onClick={() => setIsUploadModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Products
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => setIsManualModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manually
+            </Button>
+            <Button variant="accent" onClick={() => setIsUploadModalOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload File
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by vendor, product, or version..."
+            placeholder="Search by organization, vendor, product, or version..."
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -118,6 +144,9 @@ const Inventory = () => {
             <table className="w-full">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Organization
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Vendor
                   </th>
@@ -138,14 +167,27 @@ const Inventory = () => {
               <tbody className="divide-y divide-border">
                 {filteredStacks.map((stack) => (
                   <tr key={stack.id} className="hover:bg-muted/30 transition-colors">
-                    {/* Vendor - Not editable */}
+                    {/* Organization - Not editable */}
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-accent" />
+                      <span className="font-medium text-navy">{stack.organization || '-'}</span>
+                    </td>
+                    
+                    {/* Vendor - Editable */}
+                    <td className="px-6 py-4">
+                      {editingId === stack.id ? (
+                        <Input
+                          value={editData.vendorName || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, vendorName: e.target.value }))}
+                          className="h-8"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                            <Package className="h-4 w-4 text-accent" />
+                          </div>
+                          <span className="font-medium">{stack.vendorName}</span>
                         </div>
-                        <span className="font-medium">{stack.vendorName}</span>
-                      </div>
+                      )}
                     </td>
                     
                     {/* Product Name */}
@@ -236,7 +278,7 @@ const Inventory = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete product?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will remove {stack.productName} from your inventory. 
+                                  This will remove {stack.productName} from your tech stack. 
                                   This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
@@ -268,10 +310,16 @@ const Inventory = () => {
                 {searchQuery ? 'Try a different search term' : 'Upload your tech stack to get started'}
               </p>
               {!searchQuery && (
-                <Button variant="accent" onClick={() => setIsUploadModalOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Products
-                </Button>
+                <div className="flex items-center justify-center gap-3">
+                  <Button variant="outline" onClick={() => setIsManualModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Manually
+                  </Button>
+                  <Button variant="accent" onClick={() => setIsUploadModalOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload File
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -285,8 +333,14 @@ const Inventory = () => {
           loadTechStacks();
         }} 
       />
+
+      <ManualTechStackModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        onSubmit={handleManualAdd}
+      />
     </DashboardLayout>
   );
 };
 
-export default Inventory;
+export default TechStack;

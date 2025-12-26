@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { 
   ShieldX, LayoutDashboard, FileText, Package, Settings, 
-  LogOut, User, ChevronDown, Bell
+  LogOut, User, ChevronDown, Bell, Phone
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +28,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: FileText, label: 'Advisories', path: '/advisories' },
-    { icon: Package, label: 'Inventory', path: '/inventory' },
+    { icon: Package, label: 'Tech Stack', path: '/tech-stack' },
+    { icon: Phone, label: 'Contact', path: '/contact' },
   ];
 
   const handleLogout = () => {
@@ -85,12 +86,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-56 bg-card">
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="h-4 w-4 mr-2" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
