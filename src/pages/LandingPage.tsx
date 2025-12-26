@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Shield, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import DemoTour from "@/components/DemoTour";
+
 const LandingPage = () => {
+  const [showDemo, setShowDemo] = useState(false);
   const clients = ["TechCorp", "SecureNet", "DataGuard", "CyberShield", "InfoSec Pro", "NetDefend", "CloudSafe", "RiskZero"];
   const testimonials = [{
     name: "Sarah Chen",
@@ -33,7 +37,10 @@ const LandingPage = () => {
     title: "Smart Email Notifications",
     description: "Critical advisory alerts sent directly to responsible teams based on your tech stack configuration."
   }];
-  return <div className="min-h-screen bg-background">
+  return (
+    <>
+      <DemoTour isOpen={showDemo} onClose={() => setShowDemo(false)} />
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
@@ -124,7 +131,7 @@ Before It's Too Late.<br />
                   Get Started Free
                 </Button>
               </Link>
-              <Button variant="hero-outline" size="xl">
+              <Button variant="hero-outline" size="xl" onClick={() => setShowDemo(true)}>
                 Request Demo
               </Button>
             </motion.div>
@@ -333,7 +340,7 @@ Before It's Too Late.<br />
                     Start Free Trial
                   </Button>
                 </Link>
-                <Button variant="navy-outline" size="xl">
+                <Button variant="navy-outline" size="xl" onClick={() => setShowDemo(true)}>
                   Schedule Demo
                 </Button>
               </div>
@@ -361,6 +368,9 @@ Before It's Too Late.<br />
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+    </>
+  );
 };
+
 export default LandingPage;
