@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ManualTechStackModalProps {
   isOpen: boolean;
@@ -17,6 +24,39 @@ interface ManualTechStackModalProps {
   }) => void;
 }
 
+const STANDARD_VENDORS = [
+  "Adobe",
+  "Amazon Web Services",
+  "Apache",
+  "Apple",
+  "Atlassian",
+  "Cisco",
+  "Docker",
+  "Elastic",
+  "Google",
+  "HashiCorp",
+  "IBM",
+  "Jenkins",
+  "JetBrains",
+  "Kubernetes",
+  "Linux",
+  "Microsoft",
+  "MongoDB",
+  "MySQL",
+  "Nginx",
+  "Node.js",
+  "Oracle",
+  "PostgreSQL",
+  "Python",
+  "Red Hat",
+  "Salesforce",
+  "SAP",
+  "Slack",
+  "Splunk",
+  "Ubuntu",
+  "VMware",
+];
+
 const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModalProps) => {
   const [formData, setFormData] = useState({
     organization: '',
@@ -26,6 +66,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
     emailId: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCustomVendor, setIsCustomVendor] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -52,6 +93,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
         productVersion: '',
         emailId: ''
       });
+      setIsCustomVendor(false);
       onClose();
     }
   };
@@ -65,7 +107,18 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
       emailId: ''
     });
     setErrors({});
+    setIsCustomVendor(false);
     onClose();
+  };
+
+  const handleVendorSelect = (value: string) => {
+    if (value === '__custom__') {
+      setIsCustomVendor(true);
+      setFormData(prev => ({ ...prev, vendorName: '' }));
+    } else {
+      setIsCustomVendor(false);
+      setFormData(prev => ({ ...prev, vendorName: value }));
+    }
   };
 
   if (!isOpen) return null;
@@ -103,7 +156,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-2">
               <Label htmlFor="organization">Organization</Label>
               <Input
@@ -118,13 +171,53 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
             <div className="space-y-2">
               <Label htmlFor="vendorName">Vendor Name</Label>
-              <Input
-                id="vendorName"
-                placeholder="e.g., Apache, Microsoft"
-                value={formData.vendorName}
-                onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
-                className={errors.vendorName ? 'border-destructive' : ''}
-              />
+              {!isCustomVendor ? (
+                <Select
+                  value={formData.vendorName || undefined}
+                  onValueChange={handleVendorSelect}
+                >
+                  <SelectTrigger className={errors.vendorName ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select a vendor" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 bg-card">
+                    {STANDARD_VENDORS.map((vendor) => (
+                      <SelectItem key={vendor} value={vendor}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          {vendor}
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__custom__">
+                      <div className="flex items-center gap-2 text-accent">
+                        <Plus className="h-4 w-4" />
+                        Add Custom Vendor
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    id="vendorName"
+                    placeholder="Enter custom vendor name"
+                    value={formData.vendorName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
+                    className={errors.vendorName ? 'border-destructive' : ''}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsCustomVendor(false);
+                      setFormData(prev => ({ ...prev, vendorName: '' }));
+                    }}
+                    className="text-xs text-muted-foreground"
+                  >
+                    ← Back to vendor list
+                  </Button>
+                </div>
+              )}
               {errors.vendorName && <p className="text-xs text-destructive">{errors.vendorName}</p>}
             </div>
 

@@ -64,10 +64,10 @@ const LandingPage = () => {
 
           <div className="flex items-center gap-4">
             <Link to="/auth">
-              <Button variant="ghost" size="sm">Login</Button>
+              <Button variant="ghost" size="sm">Sign In</Button>
             </Link>
             <Link to="/auth?mode=register">
-              <Button variant="accent" size="sm">Get Started</Button>
+              <Button variant="accent" size="sm">Sign Up</Button>
             </Link>
           </div>
         </div>
@@ -129,7 +129,7 @@ Before It's Too Late.<br />
           }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/auth?mode=register">
                 <Button variant="hero" size="xl">
-                  Get Started Free
+                  Sign Up
                 </Button>
               </Link>
               <Button variant="hero-outline" size="xl" onClick={() => setShowDemo(true)}>
@@ -336,13 +336,13 @@ Before It's Too Late.<br />
                 Start monitoring vulnerabilities in minutes. No credit card required.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/auth?mode=register">
+                <Link to="/auth">
                   <Button variant="hero" size="xl">
-                    Start Free Trial
+                    Sign In
                   </Button>
                 </Link>
                 <Button variant="navy-outline" size="xl" onClick={() => setShowDemo(true)}>
-                  Schedule Demo
+                  Request Demo
                 </Button>
               </div>
             </div>
