@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { hasVisited } from "@/lib/storage";
+// hasVisited removed - landing page always shows for unauthenticated users
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
@@ -37,16 +37,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Landing Route Component (only for new users)
+// Landing Route Component - always show for unauthenticated users
 const LandingRoute = () => {
   const { isAuthenticated } = useAuth();
   
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
-  }
-  
-  if (hasVisited()) {
-    return <Navigate to="/auth" replace />;
   }
   
   return <LandingPage />;
