@@ -102,6 +102,7 @@ const LandingPage = () => {
             }} transition={{
               delay: 0.3
             }} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-navy leading-tight mb-6">Protect Your Business
+Before It's Too Late.
 Before It's Too Late.<br />
               <span className="text-gradient text-[#d43702]">Before It's Too Late.</span>
             </motion.h1>
