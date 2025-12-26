@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
-
 const LandingPage = () => {
   const [showDemo, setShowDemo] = useState(false);
   const clients = ["TechCorp", "SecureNet", "DataGuard", "CyberShield", "InfoSec Pro", "NetDefend", "CloudSafe", "RiskZero"];
@@ -38,20 +37,19 @@ const LandingPage = () => {
     title: "Smart Email Notifications",
     description: "Critical advisory alerts sent directly to responsible teams based on your tech stack configuration."
   }];
-  return (
-    <>
+  return <>
       <DemoTour isOpen={showDemo} onClose={() => setShowDemo(false)} />
       <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <motion.div initial={{
-          opacity: 0,
-          x: -20
-        }} animate={{
-          opacity: 1,
-          x: 0
-        }} className="flex items-center gap-2">
+            opacity: 0,
+            x: -20
+          }} animate={{
+            opacity: 1,
+            x: 0
+          }} className="flex items-center gap-2">
             <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
             <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
           </motion.div>
@@ -81,14 +79,14 @@ const LandingPage = () => {
         <div className="container mx-auto px-6 relative">
           <div className="max-w-4xl mx-auto text-center">
             <motion.div initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            delay: 0.2
-          }}>
+              opacity: 0,
+              y: 20
+            }} animate={{
+              opacity: 1,
+              y: 0
+            }} transition={{
+              delay: 0.2
+            }}>
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-6">
                 <Shield className="h-4 w-4" />
                 Enterprise Vulnerability Intelligence
@@ -96,37 +94,37 @@ const LandingPage = () => {
             </motion.div>
 
             <motion.h1 initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            delay: 0.3
-          }} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-navy leading-tight mb-6">Protect Your Buisness
+              opacity: 0,
+              y: 20
+            }} animate={{
+              opacity: 1,
+              y: 0
+            }} transition={{
+              delay: 0.3
+            }} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-navy leading-tight mb-6">Protect Your Business Before It's Too Late.
 Before It's Too Late.<br />
               <span className="text-gradient text-[#d43702]">Before It's Too Late.</span>
             </motion.h1>
 
             <motion.p initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            delay: 0.4
-          }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. Stay ahead of threats with automated alerts and actionable insights.</motion.p>
+              opacity: 0,
+              y: 20
+            }} animate={{
+              opacity: 1,
+              y: 0
+            }} transition={{
+              delay: 0.4
+            }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. Stay ahead of threats with automated alerts and actionable insights.</motion.p>
 
             <motion.div initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            delay: 0.5
-          }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              opacity: 0,
+              y: 20
+            }} animate={{
+              opacity: 1,
+              y: 0
+            }} transition={{
+              delay: 0.5
+            }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/auth?mode=register">
                 <Button variant="hero" size="xl">
                   Sign Up
@@ -140,14 +138,14 @@ Before It's Too Late.<br />
 
           {/* Hero Visual */}
           <motion.div initial={{
-          opacity: 0,
-          y: 40
-        }} animate={{
-          opacity: 1,
-          y: 0
-        }} transition={{
-          delay: 0.6
-        }} className="mt-20 relative">
+            opacity: 0,
+            y: 40
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.6
+          }} className="mt-20 relative">
             <div className="relative mx-auto max-w-5xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-navy/5 to-accent/5" />
               <div className="p-8">
@@ -191,26 +189,26 @@ Before It's Too Late.<br />
       <section id="clients" className="py-16 border-y border-border bg-muted/30">
         <div className="container mx-auto px-6">
           <motion.p initial={{
-          opacity: 0
-        }} whileInView={{
-          opacity: 1
-        }} viewport={{
-          once: true
-        }} className="text-center text-sm font-medium text-muted-foreground mb-8">
+            opacity: 0
+          }} whileInView={{
+            opacity: 1
+          }} viewport={{
+            once: true
+          }} className="text-center text-sm font-medium text-muted-foreground mb-8">
             TRUSTED BY SECURITY TEAMS WORLDWIDE
           </motion.p>
           <div className="flex flex-wrap items-center justify-center gap-12">
             {clients.map((client, i) => <motion.div key={client} initial={{
-            opacity: 0,
-            y: 10
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            delay: i * 0.1
-          }} className="text-xl font-display font-semibold text-muted-foreground/50">
+              opacity: 0,
+              y: 10
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: i * 0.1
+            }} className="text-xl font-display font-semibold text-muted-foreground/50">
                 {client}
               </motion.div>)}
           </div>
@@ -221,14 +219,14 @@ Before It's Too Late.<br />
       <section id="features" className="py-24">
         <div className="container mx-auto px-6">
           <motion.div initial={{
-          opacity: 0,
-          y: 20
-        }} whileInView={{
-          opacity: 1,
-          y: 0
-        }} viewport={{
-          once: true
-        }} className="text-center max-w-2xl mx-auto mb-16">
+            opacity: 0,
+            y: 20
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-4xl font-display font-bold text-navy mb-4">
               Core Engine Secrets
             </h2>
@@ -239,16 +237,16 @@ Before It's Too Late.<br />
 
           <div className="grid md:grid-cols-3 gap-8">
             {features.map((feature, i) => <motion.div key={feature.title} initial={{
-            opacity: 0,
-            y: 20
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            delay: i * 0.1
-          }} className="group relative bg-card rounded-2xl border border-border p-8 hover:shadow-xl transition-all duration-300">
+              opacity: 0,
+              y: 20
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: i * 0.1
+            }} className="group relative bg-card rounded-2xl border border-border p-8 hover:shadow-xl transition-all duration-300">
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
                 <div className="relative">
                   <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-accent/10 text-accent mb-6">
@@ -270,14 +268,14 @@ Before It's Too Late.<br />
       <section id="testimonials" className="py-24 bg-navy-gradient">
         <div className="container mx-auto px-6">
           <motion.div initial={{
-          opacity: 0,
-          y: 20
-        }} whileInView={{
-          opacity: 1,
-          y: 0
-        }} viewport={{
-          once: true
-        }} className="text-center max-w-2xl mx-auto mb-16">
+            opacity: 0,
+            y: 20
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-4xl font-display font-bold text-primary-foreground mb-4">
               Trusted by Security Leaders
             </h2>
@@ -288,16 +286,16 @@ Before It's Too Late.<br />
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, i) => <motion.div key={testimonial.name} initial={{
-            opacity: 0,
-            y: 20
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            delay: i * 0.1
-          }} className="bg-primary-foreground/10 backdrop-blur-lg rounded-2xl border border-primary-foreground/10 p-8">
+              opacity: 0,
+              y: 20
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: i * 0.1
+            }} className="bg-primary-foreground/10 backdrop-blur-lg rounded-2xl border border-primary-foreground/10 p-8">
                 <p className="text-primary-foreground/90 leading-relaxed mb-6">
                   "{testimonial.content}"
                 </p>
@@ -319,14 +317,14 @@ Before It's Too Late.<br />
       <section className="py-24">
         <div className="container mx-auto px-6">
           <motion.div initial={{
-          opacity: 0,
-          scale: 0.95
-        }} whileInView={{
-          opacity: 1,
-          scale: 1
-        }} viewport={{
-          once: true
-        }} className="relative max-w-4xl mx-auto text-center bg-card rounded-3xl border border-border p-12 overflow-hidden">
+            opacity: 0,
+            scale: 0.95
+          }} whileInView={{
+            opacity: 1,
+            scale: 1
+          }} viewport={{
+            once: true
+          }} className="relative max-w-4xl mx-auto text-center bg-card rounded-3xl border border-border p-12 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-navy/5" />
             <div className="relative">
               <h2 className="text-4xl font-display font-bold text-navy mb-4">
@@ -370,8 +368,6 @@ Before It's Too Late.<br />
         </div>
       </footer>
     </div>
-    </>
-  );
+    </>;
 };
-
 export default LandingPage;
