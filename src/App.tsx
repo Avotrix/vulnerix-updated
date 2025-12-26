@@ -9,7 +9,10 @@ import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import Advisories from "./pages/Advisories";
-import Inventory from "./pages/Inventory";
+import TechStack from "./pages/TechStack";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,13 +78,39 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/inventory" 
+        path="/tech-stack" 
         element={
           <ProtectedRoute>
-            <Inventory />
+            <TechStack />
           </ProtectedRoute>
         } 
       />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/contact" 
+        element={
+          <ProtectedRoute>
+            <Contact />
+          </ProtectedRoute>
+        } 
+      />
+      {/* Redirect old inventory route to tech-stack */}
+      <Route path="/inventory" element={<Navigate to="/tech-stack" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
