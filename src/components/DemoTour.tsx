@@ -128,21 +128,22 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm"
-        onClick={handleSkip}
-      >
+      {isOpen && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          onClick={e => e.stopPropagation()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={handleSkip}
         >
-          <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="relative bg-navy-gradient p-6">
               <button
@@ -170,8 +171,8 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6">
+            {/* Content - Scrollable */}
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
               <p className="text-muted-foreground leading-relaxed mb-6">
                 {step.description}
               </p>
@@ -191,9 +192,12 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
                   ))}
                 </ul>
               </div>
+            </div>
 
+            {/* Footer - Fixed */}
+            <div className="p-6 border-t border-border bg-card">
               {/* Progress dots */}
-              <div className="flex justify-center gap-2 mb-6">
+              <div className="flex justify-center gap-2 mb-4">
                 {demoSteps.map((_, index) => (
                   <button
                     key={index}
@@ -239,9 +243,9 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
                 </Button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
     </AnimatePresence>
   );
 };

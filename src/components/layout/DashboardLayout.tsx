@@ -29,6 +29,21 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+const READ_NOTIFICATIONS_KEY = 'vulnerix_read_notifications';
+
+const getReadNotifications = (): string[] => {
+  const data = localStorage.getItem(READ_NOTIFICATIONS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+const markNotificationAsRead = (cveId: string) => {
+  const readIds = getReadNotifications();
+  if (!readIds.includes(cveId)) {
+    readIds.push(cveId);
+    localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(readIds));
+  }
+};
+
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,11 +53,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   useEffect(() => {
     const advisories = getAdvisories();
-    // Get critical and high severity advisories as notifications
-    const criticalAdvisories = advisories.filter(
-      (a) => a.Severity === 'Critical' || a.Severity === 'High'
-    ).slice(0, 5);
-    setNotifications(criticalAdvisories);
+    const readIds = getReadNotifications();
+    // Get critical and high severity advisories that are unread
+    const unreadAdvisories = advisories.filter(
+      (a) => (a.Severity === 'Critical' || a.Severity === 'High') && !readIds.includes(a.cve_id)
+    ).slice(0, 10);
+    setNotifications(unreadAdvisories);
   }, [location.pathname]);
 
   const navItems = [
@@ -115,8 +131,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                         key={advisory.cve_id}
                         className="p-3 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer"
                         onClick={() => {
+                          // Mark as read
+                          markNotificationAsRead(advisory.cve_id);
+                          // Remove from local state
+                          setNotifications(prev => prev.filter(n => n.cve_id !== advisory.cve_id));
                           setIsNotificationOpen(false);
-                          navigate('/advisories');
+                          // Navigate to advisories with the CVE ID as search param
+                          navigate(`/advisories?cve=${advisory.cve_id}`);
                         }}
                       >
                         <div className="flex items-start gap-3">

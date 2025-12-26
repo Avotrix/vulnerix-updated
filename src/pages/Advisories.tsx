@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   Search, Filter, ExternalLink, ChevronLeft, ChevronRight,
@@ -29,6 +30,7 @@ const ITEMS_PER_PAGE = 5;
 
 const Advisories = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
@@ -39,7 +41,15 @@ const Advisories = () => {
   useEffect(() => {
     setAdvisories(getAdvisories());
     updateEmailStatuses();
-  }, []);
+    
+    // Check for CVE search param from notification click
+    const cveParam = searchParams.get('cve');
+    if (cveParam) {
+      setSearchQuery(cveParam);
+      // Clear the search param after setting the filter
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const updateEmailStatuses = () => {
     const queue = getEmailQueue();
