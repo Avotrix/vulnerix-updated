@@ -31,6 +31,7 @@ interface DashboardLayoutProps {
 
 const READ_NOTIFICATIONS_KEY = 'vulnerix_read_notifications';
 const SETTINGS_KEY = 'vulnerix_settings';
+const CERTIN_TOGGLE_KEY = 'vulnerix_certin_toggle';
 
 const getReadNotifications = (): string[] => {
   const data = localStorage.getItem(READ_NOTIFICATIONS_KEY);
@@ -79,18 +80,34 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const advisories = getAdvisories();
     const readIds = getReadNotifications();
     const settings = getNotificationSettings();
+    const certInEnabled = localStorage.getItem(CERTIN_TOGGLE_KEY) !== 'false';
     
-    // Filter based on user preferences
+    // Filter based on CERT-In toggle and user preferences
     const unreadAdvisories = advisories.filter((a) => {
+      // First, apply CERT-In toggle filter
+      if (!certInEnabled) {
+        // When CERT-In is OFF, only show CVE entries
+        if (!a.cve_id || !a.cve_id.startsWith('CVE-')) {
+          return false;
+        }
+      }
+      
       // Check severity preference
       const matchesSeverity = settings.severities.includes(a.Severity);
       
-      // Check source preference
+      // Check source preference (respecting CERT-In toggle)
       const isCertIn = a.cvin_id && a.cvin_id.trim() !== '';
-      const matchesSource = 
-        (settings.sources.includes('CVE') && a.cve_id.startsWith('CVE-')) ||
-        (settings.sources.includes('CERT-In') && isCertIn) ||
-        settings.sources.includes('NVD');
+      let matchesSource = false;
+      
+      if (settings.sources.includes('NVD') || settings.sources.includes('CVE')) {
+        if (a.cve_id && a.cve_id.startsWith('CVE-')) {
+          matchesSource = true;
+        }
+      }
+      
+      if (certInEnabled && settings.sources.includes('CERT-In') && isCertIn) {
+        matchesSource = true;
+      }
       
       // Not already read
       const isUnread = !readIds.includes(a.cve_id);

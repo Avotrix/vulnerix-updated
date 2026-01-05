@@ -21,10 +21,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getAdvisories, addToEmailQueue, getEmailQueue } from "@/lib/storage";
-import { Advisory } from "@/lib/mockData";
+import { getAdvisories, addToEmailQueue, getEmailQueue, getTechStacks } from "@/lib/storage";
+import { Advisory, TechStack } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
+
+const CERTIN_TOGGLE_KEY = 'vulnerix_certin_toggle';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -32,14 +34,20 @@ const Advisories = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
+  const [techStacks, setTechStacks] = useState<TechStack[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [vendorFilter, setVendorFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [emailStatuses, setEmailStatuses] = useState<Record<string, string>>({});
+  const [certInEnabled, setCertInEnabled] = useState(() => {
+    const stored = localStorage.getItem(CERTIN_TOGGLE_KEY);
+    return stored !== 'false';
+  });
 
   useEffect(() => {
     setAdvisories(getAdvisories());
+    setTechStacks(getTechStacks());
     updateEmailStatuses();
     
     // Check for CVE search param from notification click
@@ -49,7 +57,26 @@ const Advisories = () => {
       // Clear the search param after setting the filter
       setSearchParams({});
     }
+
+    // Listen for storage changes to sync CERT-In toggle
+    const handleStorageChange = () => {
+      const stored = localStorage.getItem(CERTIN_TOGGLE_KEY);
+      setCertInEnabled(stored !== 'false');
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [searchParams, setSearchParams]);
+
+  // Build vendor email map from Tech Stack
+  const vendorEmailMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    techStacks.forEach(stack => {
+      if (stack.vendorName && stack.emailId) {
+        map[stack.vendorName.toLowerCase()] = stack.emailId;
+      }
+    });
+    return map;
+  }, [techStacks]);
 
   const updateEmailStatuses = () => {
     const queue = getEmailQueue();
@@ -60,15 +87,24 @@ const Advisories = () => {
     setEmailStatuses(statuses);
   };
 
-  // Get unique vendors
+  // Get unique vendors from Tech Stack (dynamic)
   const vendors = useMemo(() => {
-    const uniqueVendors = [...new Set(advisories.map(a => a.tech_stack_vendor))];
+    const uniqueVendors = [...new Set(techStacks.map(s => s.vendorName).filter(Boolean))];
     return uniqueVendors.sort();
-  }, [advisories]);
+  }, [techStacks]);
+
+  // Filter advisories based on CERT-In toggle
+  const baseAdvisories = useMemo(() => {
+    if (certInEnabled) {
+      return advisories;
+    }
+    // NVD only - exclude CERT-In only entries
+    return advisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-'));
+  }, [advisories, certInEnabled]);
 
   // Filter advisories
   const filteredAdvisories = useMemo(() => {
-    return advisories.filter(advisory => {
+    return baseAdvisories.filter(advisory => {
       const matchesSearch = searchQuery === "" || 
         advisory.cve_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         advisory.Description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -79,7 +115,7 @@ const Advisories = () => {
       
       return matchesSearch && matchesSeverity && matchesVendor;
     });
-  }, [advisories, searchQuery, severityFilter, vendorFilter]);
+  }, [baseAdvisories, searchQuery, severityFilter, vendorFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAdvisories.length / ITEMS_PER_PAGE);
@@ -89,18 +125,37 @@ const Advisories = () => {
   );
 
   const handleSendEmail = (advisory: Advisory) => {
-    addToEmailQueue(advisory.cve_id, advisory.email_to);
+    // Get email from vendor mapping in Tech Stack
+    const vendorKey = advisory.tech_stack_vendor?.toLowerCase() || '';
+    const targetEmail = vendorEmailMap[vendorKey] || advisory.email_to;
+    
+    if (!targetEmail) {
+      toast({
+        title: "No email configured",
+        description: `No email found for vendor "${advisory.tech_stack_vendor}". Please update Tech Stack.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addToEmailQueue(advisory.cve_id, targetEmail);
     setEmailStatuses(prev => ({ ...prev, [advisory.cve_id]: 'queued' }));
     
     toast({
       title: "Email queued",
-      description: `Notification will be sent to the responsible team.`,
+      description: `Notification will be sent to ${targetEmail}`,
     });
 
     // Update status after simulated send
     setTimeout(() => {
       setEmailStatuses(prev => ({ ...prev, [advisory.cve_id]: 'sent' }));
     }, 2000);
+  };
+
+  // Get target email for display
+  const getTargetEmail = (advisory: Advisory) => {
+    const vendorKey = advisory.tech_stack_vendor?.toLowerCase() || '';
+    return vendorEmailMap[vendorKey] || advisory.email_to || 'No email configured';
   };
 
   const formatDate = (dateString: string) => {
@@ -255,8 +310,8 @@ const Advisories = () => {
                       </div>
                     </div>
 
-                    {/* CVIN Info */}
-                    {advisory.cvin_id && advisory.cvin_id.trim() !== '' && (
+                    {/* CVIN Info - Only show when CERT-In is enabled */}
+                    {certInEnabled && advisory.cvin_id && advisory.cvin_id.trim() !== '' && (
                       <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border">
                         <div className="flex items-center gap-2 mb-2">
                           <Shield className="h-4 w-4 text-accent" />
@@ -268,13 +323,6 @@ const Advisories = () => {
                         {advisory.cvin_risk_assessment && (
                           <p className="text-sm text-muted-foreground">{advisory.cvin_risk_assessment}</p>
                         )}
-                      </div>
-                    )}
-
-                    {/* Show dash if cvin_id is blank */}
-                    {(!advisory.cvin_id || advisory.cvin_id.trim() === '') && (
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-medium">CVIN ID:</span> -
                       </div>
                     )}
                   </div>
@@ -322,7 +370,7 @@ const Advisories = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Send advisory details to {advisory.email_to || 'tech stack email'}</p>
+                          <p>Send advisory details to {getTargetEmail(advisory)}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
