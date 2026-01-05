@@ -58,6 +58,46 @@ const TechStack = () => {
   };
 
   const handleSave = (id: string) => {
+    // Validate before saving
+    if (!editData.vendorName?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Vendor name is required",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!editData.productVersion?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Product version is required",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Version format check
+    const versionRegex = /^[vV]?[\d]+([._-][\d\w]+)*$/;
+    if (!versionRegex.test(editData.productVersion.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "Invalid version format (e.g., 1.0.0, v2.1, 2024.1)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Email validation
+    if (editData.emailId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.emailId)) {
+      toast({
+        title: "Validation Error",
+        description: "Invalid email format",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     updateTechStack(id, editData);
     loadTechStacks();
     setEditingId(null);

@@ -292,41 +292,40 @@ const Advisories = () => {
                       </Button>
                     </a>
                     
-                    {advisory.Severity === 'Critical' && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant={emailStatuses[advisory.cve_id] ? "secondary" : "accent"}
-                              size="sm"
-                              className="w-full"
-                              onClick={() => handleSendEmail(advisory)}
-                              disabled={!!emailStatuses[advisory.cve_id]}
-                            >
-                              {emailStatuses[advisory.cve_id] === 'sent' ? (
-                                <>
-                                  <MailCheck className="h-4 w-4 mr-2" />
-                                  Sent
-                                </>
-                              ) : emailStatuses[advisory.cve_id] === 'queued' ? (
-                                <>
-                                  <Mail className="h-4 w-4 mr-2 animate-pulse" />
-                                  Queued
-                                </>
-                              ) : (
-                                <>
-                                  <Mail className="h-4 w-4 mr-2" />
-                                  Notify
-                                </>
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Send email notification to the responsible team</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                    {/* Mail Me button for all advisories */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={emailStatuses[advisory.cve_id] ? "secondary" : "accent"}
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleSendEmail(advisory)}
+                            disabled={!!emailStatuses[advisory.cve_id]}
+                          >
+                            {emailStatuses[advisory.cve_id] === 'sent' ? (
+                              <>
+                                <MailCheck className="h-4 w-4 mr-2" />
+                                Sent
+                              </>
+                            ) : emailStatuses[advisory.cve_id] === 'queued' ? (
+                              <>
+                                <Mail className="h-4 w-4 mr-2 animate-pulse" />
+                                Queued
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="h-4 w-4 mr-2" />
+                                Mail Me
+                              </>
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Send advisory details to {advisory.email_to || 'tech stack email'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               </div>

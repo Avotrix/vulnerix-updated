@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,9 @@ interface SettingsData {
   theme: 'light' | 'dark' | 'system';
   autoRefresh: boolean;
   refreshInterval: string;
+  // Multi-select notification preferences
+  notificationSeverities: string[];
+  notificationSources: string[];
 }
 
 const defaultSettings: SettingsData = {
@@ -45,8 +49,13 @@ const defaultSettings: SettingsData = {
   weeklyDigest: false,
   theme: 'light',
   autoRefresh: false,
-  refreshInterval: '5'
+  refreshInterval: '5',
+  notificationSeverities: ['Critical', 'High'],
+  notificationSources: ['CVE', 'CERT-In']
 };
+
+const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+const SOURCE_OPTIONS = ['CVE', 'CERT-In', 'NVD'];
 
 const Settings = () => {
   const { toast } = useToast();
@@ -67,7 +76,8 @@ const Settings = () => {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
       const parsedSettings = JSON.parse(stored);
-      setSettings(parsedSettings);
+      // Merge with defaults to handle new fields
+      setSettings({ ...defaultSettings, ...parsedSettings });
     }
   }, []);
 
@@ -99,6 +109,27 @@ const Settings = () => {
     if (key === 'theme') {
       setTheme(value as 'light' | 'dark' | 'system');
     }
+  };
+
+  const toggleSeverity = (severity: string) => {
+    setSettings(prev => ({
+      ...prev,
+      notificationSeverities: prev.notificationSeverities.includes(severity)
+        ? prev.notificationSeverities.filter(s => s !== severity)
+        : [...prev.notificationSeverities, severity]
+    }));
+  };
+
+  const toggleSource = (source: string) => {
+    // NVD cannot be disabled
+    if (source === 'NVD') return;
+    
+    setSettings(prev => ({
+      ...prev,
+      notificationSources: prev.notificationSources.includes(source)
+        ? prev.notificationSources.filter(s => s !== source)
+        : [...prev.notificationSources, source]
+    }));
   };
 
   const handleDeleteAccount = async () => {
@@ -136,6 +167,7 @@ const Settings = () => {
     localStorage.removeItem('vulnerix_email_queue');
     localStorage.removeItem('vulnerix_visited');
     localStorage.removeItem('vulnerix_tour_completed');
+    localStorage.removeItem('vulnerix_read_notifications');
 
     toast({
       title: "Account deleted",
@@ -211,6 +243,55 @@ const Settings = () => {
                 checked={settings.weeklyDigest}
                 onCheckedChange={(checked) => updateSetting('weeklyDigest', checked)}
               />
+            </div>
+
+            {/* Severity Multi-Select */}
+            <div className="pt-4 border-t border-border">
+              <Label className="text-base mb-3 block">Notify for Severity Levels</Label>
+              <div className="flex flex-wrap gap-3">
+                {SEVERITY_OPTIONS.map((severity) => (
+                  <label
+                    key={severity}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={settings.notificationSeverities.includes(severity)}
+                      onCheckedChange={() => toggleSeverity(severity)}
+                    />
+                    <span className={`text-sm font-medium ${
+                      severity === 'Critical' ? 'text-severity-critical' :
+                      severity === 'High' ? 'text-severity-high' :
+                      severity === 'Medium' ? 'text-severity-medium' :
+                      'text-severity-low'
+                    }`}>
+                      {severity}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Source Multi-Select */}
+            <div className="pt-4 border-t border-border">
+              <Label className="text-base mb-3 block">Notify from Sources</Label>
+              <div className="flex flex-wrap gap-3">
+                {SOURCE_OPTIONS.map((source) => (
+                  <label
+                    key={source}
+                    className={`flex items-center gap-2 ${source === 'NVD' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                  >
+                    <Checkbox
+                      checked={settings.notificationSources.includes(source) || source === 'NVD'}
+                      onCheckedChange={() => toggleSource(source)}
+                      disabled={source === 'NVD'}
+                    />
+                    <span className="text-sm font-medium">
+                      {source}
+                      {source === 'NVD' && <span className="text-xs text-muted-foreground ml-1">(Always On)</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </motion.div>
