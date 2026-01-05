@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
+import ForgotPasswordModal from "@/components/modals/ForgotPasswordModal";
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
@@ -18,6 +19,7 @@ const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'register');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -200,7 +202,11 @@ const AuthPage = () => {
 
               {isLogin && (
                 <div className="flex justify-end">
-                  <button type="button" className="text-sm text-accent hover:underline">
+                  <button 
+                    type="button" 
+                    className="text-sm text-accent hover:underline"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
                     Forgot password?
                   </button>
                 </div>
@@ -268,6 +274,11 @@ const AuthPage = () => {
           </motion.div>
         </div>
       </div>
+
+      <ForgotPasswordModal 
+        isOpen={showForgotPassword} 
+        onClose={() => setShowForgotPassword(false)} 
+      />
     </div>
   );
 };

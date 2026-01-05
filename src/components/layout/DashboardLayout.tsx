@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   LayoutDashboard, FileText, Package, Settings, 
-  LogOut, User, ChevronDown, Bell, Phone, Shield, X
+  LogOut, User, ChevronDown, Bell, Phone, Shield, X, Trash2
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +30,7 @@ interface DashboardLayoutProps {
 }
 
 const READ_NOTIFICATIONS_KEY = 'vulnerix_read_notifications';
+const SETTINGS_KEY = 'vulnerix_settings';
 
 const getReadNotifications = (): string[] => {
   const data = localStorage.getItem(READ_NOTIFICATIONS_KEY);
@@ -44,6 +45,29 @@ const markNotificationAsRead = (cveId: string) => {
   }
 };
 
+const clearAllNotifications = () => {
+  const advisories = getAdvisories();
+  const allCriticalHighIds = advisories
+    .filter(a => a.Severity === 'Critical' || a.Severity === 'High')
+    .map(a => a.cve_id);
+  localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allCriticalHighIds));
+};
+
+const getNotificationSettings = () => {
+  const data = localStorage.getItem(SETTINGS_KEY);
+  if (data) {
+    const settings = JSON.parse(data);
+    return {
+      severities: settings.notificationSeverities || ['Critical', 'High'],
+      sources: settings.notificationSources || ['CVE', 'CERT-In']
+    };
+  }
+  return {
+    severities: ['Critical', 'High'],
+    sources: ['CVE', 'CERT-In']
+  };
+};
+
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,15 +75,41 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [notifications, setNotifications] = useState<Advisory[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
-  useEffect(() => {
+  const loadNotifications = () => {
     const advisories = getAdvisories();
     const readIds = getReadNotifications();
-    // Get critical and high severity advisories that are unread
-    const unreadAdvisories = advisories.filter(
-      (a) => (a.Severity === 'Critical' || a.Severity === 'High') && !readIds.includes(a.cve_id)
-    ).slice(0, 10);
+    const settings = getNotificationSettings();
+    
+    // Filter based on user preferences
+    const unreadAdvisories = advisories.filter((a) => {
+      // Check severity preference
+      const matchesSeverity = settings.severities.includes(a.Severity);
+      
+      // Check source preference
+      const isCertIn = a.cvin_id && a.cvin_id.trim() !== '';
+      const matchesSource = 
+        (settings.sources.includes('CVE') && a.cve_id.startsWith('CVE-')) ||
+        (settings.sources.includes('CERT-In') && isCertIn) ||
+        settings.sources.includes('NVD');
+      
+      // Not already read
+      const isUnread = !readIds.includes(a.cve_id);
+      
+      return matchesSeverity && matchesSource && isUnread;
+    }).slice(0, 10);
+    
     setNotifications(unreadAdvisories);
+  };
+
+  useEffect(() => {
+    loadNotifications();
   }, [location.pathname]);
+
+  const handleClearAll = () => {
+    clearAllNotifications();
+    setNotifications([]);
+    setIsNotificationOpen(false);
+  };
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -118,12 +168,25 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <PopoverContent align="end" className="w-80 p-0 bg-card">
                 <div className="flex items-center justify-between p-4 border-b border-border">
                   <h3 className="font-semibold text-foreground">Notifications</h3>
-                  <span className="text-xs text-muted-foreground">{notifications.length} alerts</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{notifications.length} alerts</span>
+                    {notifications.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={handleClearAll}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="p-4 text-center text-muted-foreground text-sm">
-                      No critical alerts
+                      No new alerts
                     </div>
                   ) : (
                     notifications.map((advisory) => (
@@ -143,11 +206,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                         <div className="flex items-start gap-3">
                           <div className={cn(
                             "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                            advisory.Severity === 'Critical' ? 'bg-severity-critical/10' : 'bg-severity-high/10'
+                            advisory.Severity === 'Critical' ? 'bg-severity-critical/10' : 
+                            advisory.Severity === 'High' ? 'bg-severity-high/10' :
+                            advisory.Severity === 'Medium' ? 'bg-severity-medium/10' :
+                            'bg-severity-low/10'
                           )}>
                             <Shield className={cn(
                               "h-4 w-4",
-                              advisory.Severity === 'Critical' ? 'text-severity-critical' : 'text-severity-high'
+                              advisory.Severity === 'Critical' ? 'text-severity-critical' : 
+                              advisory.Severity === 'High' ? 'text-severity-high' :
+                              advisory.Severity === 'Medium' ? 'text-severity-medium' :
+                              'text-severity-low'
                             )} />
                           </div>
                           <div className="flex-1 min-w-0">

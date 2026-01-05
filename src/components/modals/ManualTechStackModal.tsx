@@ -70,15 +70,44 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.organization.trim()) newErrors.organization = 'Organization is required';
-    if (!formData.vendorName.trim()) newErrors.vendorName = 'Vendor name is required';
-    if (!formData.productName.trim()) newErrors.productName = 'Product name is required';
-    if (!formData.productVersion.trim()) newErrors.productVersion = 'Version is required';
+    
+    if (!formData.organization.trim()) {
+      newErrors.organization = 'Organization is required';
+    }
+    
+    // Vendor validation - must exist in list or be a valid custom vendor
+    if (!formData.vendorName.trim()) {
+      newErrors.vendorName = 'Vendor name is required';
+    } else if (!isCustomVendor && !STANDARD_VENDORS.includes(formData.vendorName)) {
+      newErrors.vendorName = 'Please select a valid vendor or add a custom one';
+    } else if (formData.vendorName.length < 2) {
+      newErrors.vendorName = 'Vendor name must be at least 2 characters';
+    }
+    
+    if (!formData.productName.trim()) {
+      newErrors.productName = 'Product name is required';
+    } else if (formData.productName.length < 2) {
+      newErrors.productName = 'Product name must be at least 2 characters';
+    }
+    
+    // Version format validation
+    if (!formData.productVersion.trim()) {
+      newErrors.productVersion = 'Version is required';
+    } else {
+      // Allow various version formats: 1.0, 1.0.0, v1.0, 2024.1, etc.
+      const versionRegex = /^[vV]?[\d]+([._-][\d\w]+)*$/;
+      if (!versionRegex.test(formData.productVersion.trim())) {
+        newErrors.productVersion = 'Invalid version format (e.g., 1.0.0, v2.1, 2024.1)';
+      }
+    }
+    
+    // Email validation
     if (!formData.emailId.trim()) {
-      newErrors.emailId = 'Email is required';
+      newErrors.emailId = 'Email is required for notifications';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailId)) {
       newErrors.emailId = 'Invalid email format';
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 // hasVisited removed - landing page always shows for unauthenticated users
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Advisories from "./pages/Advisories";
 import TechStack from "./pages/TechStack";
@@ -58,6 +59,7 @@ const AppRoutes = () => {
         path="/auth" 
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthPage />} 
       />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route 
         path="/dashboard" 
         element={

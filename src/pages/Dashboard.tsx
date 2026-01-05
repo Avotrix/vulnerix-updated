@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { 
   Shield, Package, AlertTriangle, AlertCircle, Info,
-  TrendingUp, Bell, ExternalLink, BarChart3, Activity
+  TrendingUp, Bell, ExternalLink, BarChart3, Activity, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,8 @@ import { SeverityBadge } from "@/components/ui/severity-badge";
 import { getStats, getAdvisories } from "@/lib/storage";
 import { Advisory } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   ChartContainer,
   ChartTooltip,
@@ -22,15 +24,36 @@ import {
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area } from "recharts";
 
+const CERTIN_TOGGLE_KEY = 'vulnerix_certin_toggle';
+
 const Dashboard = () => {
   const [stats, setStats] = useState(getStats());
   const [recentAdvisories, setRecentAdvisories] = useState<Advisory[]>([]);
+  const [allAdvisories, setAllAdvisories] = useState<Advisory[]>([]);
+  const [certInEnabled, setCertInEnabled] = useState(() => {
+    const stored = localStorage.getItem(CERTIN_TOGGLE_KEY);
+    return stored !== 'false'; // Default to true
+  });
 
   useEffect(() => {
     setStats(getStats());
     const advisories = getAdvisories();
+    setAllAdvisories(advisories);
     setRecentAdvisories(advisories.slice(0, 5));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(CERTIN_TOGGLE_KEY, String(certInEnabled));
+  }, [certInEnabled]);
+
+  // Count CVE and CERT-In entries
+  const cveCount = useMemo(() => {
+    return allAdvisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-')).length;
+  }, [allAdvisories]);
+
+  const certInCount = useMemo(() => {
+    return allAdvisories.filter(a => a.cvin_id && a.cvin_id.trim() !== '').length;
+  }, [allAdvisories]);
 
   // Calculate overall risk level
   const overallRiskLevel = useMemo(() => {
@@ -39,7 +62,7 @@ const Dashboard = () => {
     if (stats.medium > 0) return { level: 'MEDIUM', color: 'text-severity-medium', bg: 'bg-severity-medium/10' };
     if (stats.low > 0) return { level: 'LOW', color: 'text-severity-low', bg: 'bg-severity-low/10' };
     return { level: 'NONE', color: 'text-muted-foreground', bg: 'bg-muted' };
-  }, []);
+  }, [stats]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -107,6 +130,30 @@ const Dashboard = () => {
             <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Monitor your vulnerability landscape</p>
           </div>
+          
+          {/* CERT-In / NVD Toggle */}
+          <div className="flex items-center gap-4 p-3 bg-card rounded-lg border border-border">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="certin-toggle"
+                checked={certInEnabled}
+                onCheckedChange={setCertInEnabled}
+              />
+              <Label htmlFor="certin-toggle" className="text-sm font-medium cursor-pointer">
+                CERT-In
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="nvd-toggle"
+                checked={true}
+                disabled
+              />
+              <Label htmlFor="nvd-toggle" className="text-sm font-medium text-muted-foreground cursor-not-allowed">
+                NVD (Always On)
+              </Label>
+            </div>
+          </div>
         </div>
 
         {/* Security Overview - Matching the reference design */}
@@ -146,19 +193,23 @@ const Dashboard = () => {
               <span className="text-xs text-muted-foreground">Active vulnerabilities</span>
             </div>
 
-            {/* High Risk Count */}
+            {/* Critical Count with CVE/CERT-In breakdown */}
             <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-3">
-                <span className="text-sm font-medium text-severity-critical">High Risk</span>
+                <span className="text-sm font-medium text-severity-critical">Critical</span>
                 <div className="h-10 w-10 rounded-lg bg-severity-critical/10 flex items-center justify-center">
                   <Shield className="h-5 w-5 text-severity-critical" />
                 </div>
               </div>
               <div className="text-4xl font-display font-bold text-foreground mb-1">{stats.critical + stats.high}</div>
-              <span className="text-xs text-muted-foreground">Immediate attention required</span>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>CVE: {cveCount > 0 ? cveCount : '-'}</span>
+                <span className="text-border">|</span>
+                <span>CERT-In: {certInEnabled && certInCount > 0 ? certInCount : '-'}</span>
+              </div>
             </div>
 
-            {/* Overall Risk Level */}
+            {/* Overall Risk Level with CVE/CERT-In breakdown */}
             <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-3">
                 <span className="text-sm font-medium text-muted-foreground">Overall Risk Level</span>
@@ -169,8 +220,35 @@ const Dashboard = () => {
               <div className={cn("text-3xl font-display font-bold mb-1", overallRiskLevel.color)}>
                 {overallRiskLevel.level}
               </div>
-              <span className="text-xs text-muted-foreground">Based on current advisories</span>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>CVE: {cveCount > 0 ? cveCount : '-'}</span>
+                <span className="text-border">|</span>
+                <span>CERT-In: {certInEnabled && certInCount > 0 ? certInCount : '-'}</span>
+              </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Trending Vulnerabilities - Coming Soon */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-card rounded-xl border border-border p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-lg font-display font-semibold text-foreground">Trending Vulnerabilities</h2>
+                <p className="text-sm text-muted-foreground">Real-time trending threats</p>
+              </div>
+            </div>
+            <span className="px-3 py-1 bg-muted rounded-full text-xs font-medium text-muted-foreground">
+              Coming Soon
+            </span>
           </div>
         </motion.div>
 
