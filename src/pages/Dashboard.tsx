@@ -46,23 +46,45 @@ const Dashboard = () => {
     localStorage.setItem(CERTIN_TOGGLE_KEY, String(certInEnabled));
   }, [certInEnabled]);
 
-  // Count CVE and CERT-In entries
+  // Filter advisories based on CERT-In toggle
+  const filteredAdvisories = useMemo(() => {
+    if (certInEnabled) {
+      return allAdvisories; // Include all (NVD + CERT-In)
+    }
+    // NVD only - exclude advisories that are CERT-In only (no CVE ID)
+    return allAdvisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-'));
+  }, [allAdvisories, certInEnabled]);
+
+  // Calculate filtered stats based on toggle
+  const filteredStats = useMemo(() => {
+    return {
+      totalProducts: stats.totalProducts,
+      critical: filteredAdvisories.filter(a => a.Severity === 'Critical').length,
+      high: filteredAdvisories.filter(a => a.Severity === 'High').length,
+      medium: filteredAdvisories.filter(a => a.Severity === 'Medium').length,
+      low: filteredAdvisories.filter(a => a.Severity === 'Low').length,
+      totalAdvisories: filteredAdvisories.length
+    };
+  }, [filteredAdvisories, stats.totalProducts]);
+
+  // Count CVE and CERT-In entries (only when CERT-In is enabled)
   const cveCount = useMemo(() => {
-    return allAdvisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-')).length;
-  }, [allAdvisories]);
+    return filteredAdvisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-')).length;
+  }, [filteredAdvisories]);
 
   const certInCount = useMemo(() => {
-    return allAdvisories.filter(a => a.cvin_id && a.cvin_id.trim() !== '').length;
-  }, [allAdvisories]);
+    if (!certInEnabled) return 0;
+    return filteredAdvisories.filter(a => a.cvin_id && a.cvin_id.trim() !== '').length;
+  }, [filteredAdvisories, certInEnabled]);
 
-  // Calculate overall risk level
+  // Calculate overall risk level based on filtered data
   const overallRiskLevel = useMemo(() => {
-    if (stats.critical > 0) return { level: 'CRITICAL', color: 'text-severity-critical', bg: 'bg-severity-critical/10' };
-    if (stats.high > 0) return { level: 'HIGH', color: 'text-severity-high', bg: 'bg-severity-high/10' };
-    if (stats.medium > 0) return { level: 'MEDIUM', color: 'text-severity-medium', bg: 'bg-severity-medium/10' };
-    if (stats.low > 0) return { level: 'LOW', color: 'text-severity-low', bg: 'bg-severity-low/10' };
+    if (filteredStats.critical > 0) return { level: 'CRITICAL', color: 'text-severity-critical', bg: 'bg-severity-critical/10' };
+    if (filteredStats.high > 0) return { level: 'HIGH', color: 'text-severity-high', bg: 'bg-severity-high/10' };
+    if (filteredStats.medium > 0) return { level: 'MEDIUM', color: 'text-severity-medium', bg: 'bg-severity-medium/10' };
+    if (filteredStats.low > 0) return { level: 'LOW', color: 'text-severity-low', bg: 'bg-severity-low/10' };
     return { level: 'NONE', color: 'text-muted-foreground', bg: 'bg-muted' };
-  }, [stats]);
+  }, [filteredStats]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -72,19 +94,18 @@ const Dashboard = () => {
     });
   };
 
-  // Chart data
+  // Chart data - uses filtered stats
   const severityChartData = useMemo(() => [
-    { name: "Critical", value: stats.critical, fill: "hsl(0 84% 60%)" },
-    { name: "High", value: stats.high, fill: "hsl(25 95% 53%)" },
-    { name: "Medium", value: stats.medium, fill: "hsl(45 93% 47%)" },
-    { name: "Low", value: stats.low, fill: "hsl(142 71% 45%)" },
-  ], [stats]);
+    { name: "Critical", value: filteredStats.critical, fill: "hsl(0 84% 60%)" },
+    { name: "High", value: filteredStats.high, fill: "hsl(25 95% 53%)" },
+    { name: "Medium", value: filteredStats.medium, fill: "hsl(45 93% 47%)" },
+    { name: "Low", value: filteredStats.low, fill: "hsl(142 71% 45%)" },
+  ].filter(item => item.value > 0), [filteredStats]);
 
   const trendChartData = useMemo(() => {
-    const advisories = getAdvisories();
     const monthlyData: Record<string, { critical: number; high: number; medium: number; low: number }> = {};
     
-    advisories.forEach((advisory) => {
+    filteredAdvisories.forEach((advisory) => {
       const date = new Date(advisory.lastModified);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       
@@ -105,7 +126,7 @@ const Dashboard = () => {
         month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
         ...data,
       }));
-  }, []);
+  }, [filteredAdvisories]);
 
   const chartConfig = {
     critical: { label: "Critical", color: "hsl(0 84% 60%)" },
@@ -131,28 +152,16 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Monitor your vulnerability landscape</p>
           </div>
           
-          {/* CERT-In / NVD Toggle */}
-          <div className="flex items-center gap-4 p-3 bg-card rounded-lg border border-border">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="certin-toggle"
-                checked={certInEnabled}
-                onCheckedChange={setCertInEnabled}
-              />
-              <Label htmlFor="certin-toggle" className="text-sm font-medium cursor-pointer">
-                CERT-In
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="nvd-toggle"
-                checked={true}
-                disabled
-              />
-              <Label htmlFor="nvd-toggle" className="text-sm font-medium text-muted-foreground cursor-not-allowed">
-                NVD (Always On)
-              </Label>
-            </div>
+          {/* CERT-In Toggle Only */}
+          <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border">
+            <Switch
+              id="certin-toggle"
+              checked={certInEnabled}
+              onCheckedChange={setCertInEnabled}
+            />
+            <Label htmlFor="certin-toggle" className="text-sm font-medium cursor-pointer">
+              CERT-In
+            </Label>
           </div>
         </div>
 
@@ -189,7 +198,7 @@ const Dashboard = () => {
                   <AlertTriangle className="h-5 w-5 text-severity-medium" />
                 </div>
               </div>
-              <div className="text-4xl font-display font-bold text-foreground mb-1">{stats.critical + stats.high + stats.medium + stats.low}</div>
+              <div className="text-4xl font-display font-bold text-foreground mb-1">{filteredStats.totalAdvisories}</div>
               <span className="text-xs text-muted-foreground">Active vulnerabilities</span>
             </div>
 
@@ -201,11 +210,15 @@ const Dashboard = () => {
                   <Shield className="h-5 w-5 text-severity-critical" />
                 </div>
               </div>
-              <div className="text-4xl font-display font-bold text-foreground mb-1">{stats.critical + stats.high}</div>
+              <div className="text-4xl font-display font-bold text-foreground mb-1">{filteredStats.critical + filteredStats.high}</div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>CVE: {cveCount > 0 ? cveCount : '-'}</span>
-                <span className="text-border">|</span>
-                <span>CERT-In: {certInEnabled && certInCount > 0 ? certInCount : '-'}</span>
+                {certInEnabled && (
+                  <>
+                    <span className="text-border">|</span>
+                    <span>CERT-In: {certInCount > 0 ? certInCount : '-'}</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -222,8 +235,12 @@ const Dashboard = () => {
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>CVE: {cveCount > 0 ? cveCount : '-'}</span>
-                <span className="text-border">|</span>
-                <span>CERT-In: {certInEnabled && certInCount > 0 ? certInCount : '-'}</span>
+                {certInEnabled && (
+                  <>
+                    <span className="text-border">|</span>
+                    <span>CERT-In: {certInCount > 0 ? certInCount : '-'}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -390,7 +407,7 @@ const Dashboard = () => {
           </div>
 
           <div className="divide-y divide-border">
-            {recentAdvisories.map((advisory) => (
+            {filteredAdvisories.slice(0, 5).map((advisory) => (
               <div 
                 key={advisory.cve_id}
                 className="p-4 hover:bg-muted/50 transition-colors"
