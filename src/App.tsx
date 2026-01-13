@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { AdminProvider, useAdmin } from "@/contexts/AdminContext";
 // hasVisited removed - landing page always shows for unauthenticated users
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
@@ -16,6 +17,8 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "./pages/AdminLogin";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +50,17 @@ const LandingRoute = () => {
   }
   
   return <LandingPage />;
+};
+
+// Admin Protected Route
+const AdminProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdminAuthenticated } = useAdmin();
+  
+  if (!isAdminAuthenticated) {
+    return <Navigate to="/admin" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 const AppRoutes = () => {
@@ -110,6 +124,18 @@ const AppRoutes = () => {
       />
       {/* Redirect old inventory route to tech-stack */}
       <Route path="/inventory" element={<Navigate to="/tech-stack" replace />} />
+      
+      {/* Admin Routes - Separate from user routes */}
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route 
+        path="/admin/panel" 
+        element={
+          <AdminProtectedRoute>
+            <AdminPanel />
+          </AdminProtectedRoute>
+        } 
+      />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -118,15 +144,17 @@ const AppRoutes = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </ThemeProvider>
+      <AdminProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AdminProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

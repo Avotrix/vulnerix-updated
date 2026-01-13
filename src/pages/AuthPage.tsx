@@ -251,10 +251,10 @@ const AuthPage = () => {
               <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-16 w-16" />
             </div>
             
-            <h2 className="text-3xl font-display font-bold text-primary-foreground mb-4">
+            <h2 className="text-3xl font-display font-bold text-white mb-4">
               Secure Your Technology Stack
             </h2>
-            <p className="text-primary-foreground/70 text-lg leading-relaxed">
+            <p className="text-cyan-100 text-lg leading-relaxed">
               Join thousands of security teams who trust Vulnerix to monitor vulnerabilities 
               and protect their infrastructure from emerging threats.
             </p>
@@ -266,8 +266,8 @@ const AuthPage = () => {
                 { label: 'Alerts Sent', value: '10M+' }
               ].map((stat) => (
                 <div key={stat.label}>
-                  <div className="text-2xl font-display font-bold text-accent">{stat.value}</div>
-                  <div className="text-sm text-primary-foreground/60">{stat.label}</div>
+                  <div className="text-2xl font-display font-bold text-cyan-400">{stat.value}</div>
+                  <div className="text-sm text-cyan-200">{stat.label}</div>
                 </div>
               ))}
             </div>
