@@ -379,6 +379,16 @@ const LandingPage = () => {
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
             </div>
           </div>
+          
+          {/* Admin Login Link - Bottom of Home Page Only */}
+          <div className="mt-8 pt-6 border-t border-border/50 text-center">
+            <Link 
+              to="/admin" 
+              className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            >
+              Admin Login
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
