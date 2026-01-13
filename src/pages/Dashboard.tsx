@@ -179,7 +179,7 @@ const Dashboard = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Software/Products */}
-            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+            <div className="bg-secondary dark:bg-secondary rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-3">
                 <span className="text-sm font-medium text-accent">Total Software</span>
                 <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -191,7 +191,7 @@ const Dashboard = () => {
             </div>
 
             {/* Total Advisories */}
-            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+            <div className="bg-secondary dark:bg-secondary rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-3">
                 <span className="text-sm font-medium text-severity-medium">Total Advisories</span>
                 <div className="h-10 w-10 rounded-lg bg-severity-medium/10 flex items-center justify-center">
@@ -202,46 +202,60 @@ const Dashboard = () => {
               <span className="text-xs text-muted-foreground">Active vulnerabilities</span>
             </div>
 
-            {/* Critical Count with CVE/CERT-In breakdown */}
-            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+            {/* Critical Risk KPI - Nested tiles when CERT-In is ON */}
+            <div className="bg-secondary dark:bg-secondary rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-3">
-                <span className="text-sm font-medium text-severity-critical">Critical</span>
+                <span className="text-sm font-medium text-severity-critical">Critical Risk</span>
                 <div className="h-10 w-10 rounded-lg bg-severity-critical/10 flex items-center justify-center">
                   <Shield className="h-5 w-5 text-severity-critical" />
                 </div>
               </div>
-              <div className="text-4xl font-display font-bold text-foreground mb-1">{filteredStats.critical + filteredStats.high}</div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>CVE: {cveCount > 0 ? cveCount : '-'}</span>
-                {certInEnabled && (
-                  <>
-                    <span className="text-border">|</span>
-                    <span>CERT-In: {certInCount > 0 ? certInCount : '-'}</span>
-                  </>
-                )}
-              </div>
+              
+              {certInEnabled ? (
+                /* When CERT-In is ON: Show nested tiles */
+                <div className="space-y-3">
+                  {/* CVE Criticality Nested Tile */}
+                  <div className="bg-card dark:bg-muted/50 rounded-lg p-3 border border-border/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">CVE Criticality</span>
+                      <span className="text-2xl font-display font-bold text-foreground">
+                        {filteredAdvisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-') && (a.Severity === 'Critical' || a.Severity === 'High')).length}
+                      </span>
+                    </div>
+                  </div>
+                  {/* CERT-IN Criticality Nested Tile */}
+                  <div className="bg-card dark:bg-muted/50 rounded-lg p-3 border border-border/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">CERT-IN Criticality</span>
+                      <span className="text-2xl font-display font-bold text-foreground">
+                        {filteredAdvisories.filter(a => a.cvin_id && a.cvin_id.trim() !== '' && (a.Severity === 'Critical' || a.Severity === 'High')).length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* When CERT-In is OFF: Show single CVE criticality value */
+                <>
+                  <div className="text-4xl font-display font-bold text-foreground mb-1">
+                    {filteredAdvisories.filter(a => a.cve_id && a.cve_id.startsWith('CVE-') && (a.Severity === 'Critical' || a.Severity === 'High')).length}
+                  </div>
+                  <span className="text-xs text-muted-foreground">CVE Critical/High alerts</span>
+                </>
+              )}
             </div>
 
-            {/* Overall Risk Level with CVE/CERT-In breakdown */}
-            <div className="bg-muted/30 rounded-xl p-5 border border-border/50">
+            {/* Overall Risk Level - Status text only, no numeric values */}
+            <div className="bg-secondary dark:bg-secondary rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-3">
                 <span className="text-sm font-medium text-muted-foreground">Overall Risk Level</span>
                 <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", overallRiskLevel.bg)}>
                   <Activity className={cn("h-5 w-5", overallRiskLevel.color)} />
                 </div>
               </div>
-              <div className={cn("text-3xl font-display font-bold mb-1", overallRiskLevel.color)}>
+              <div className={cn("text-3xl font-display font-bold", overallRiskLevel.color)}>
                 {overallRiskLevel.level}
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>CVE: {cveCount > 0 ? cveCount : '-'}</span>
-                {certInEnabled && (
-                  <>
-                    <span className="text-border">|</span>
-                    <span>CERT-In: {certInCount > 0 ? certInCount : '-'}</span>
-                  </>
-                )}
-              </div>
+              <span className="text-xs text-muted-foreground">Based on severity distribution</span>
             </div>
           </div>
         </motion.div>
