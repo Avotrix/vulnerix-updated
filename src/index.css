@@ -90,29 +90,38 @@
     --popover: 213 80% 12%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 187 92% 42%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 187 92% 50%;
+    --primary-foreground: 213 90% 8%;
 
-    --secondary: 213 60% 20%;
+    --secondary: 213 70% 15%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 213 60% 20%;
-    --muted-foreground: 215 25% 70%;
+    --muted: 213 60% 18%;
+    --muted-foreground: 215 25% 75%;
 
-    --accent: 187 92% 42%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 187 92% 50%;
+    --accent-foreground: 213 90% 8%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 213 50% 25%;
-    --input: 213 50% 25%;
-    --ring: 187 92% 42%;
+    --border: 213 50% 28%;
+    --input: 213 50% 22%;
+    --ring: 187 92% 50%;
     
     /* Dark mode specific - Navy text should be light */
     --navy: 210 40% 98%;
     --navy-light: 210 30% 90%;
     --navy-dark: 210 20% 85%;
+
+    /* Dark mode sidebar */
+    --sidebar-background: 213 80% 10%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 187 92% 50%;
+    --sidebar-primary-foreground: 213 90% 8%;
+    --sidebar-accent: 213 60% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 213 50% 25%;
   }
 }
 
