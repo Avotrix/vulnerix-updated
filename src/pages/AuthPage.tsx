@@ -110,10 +110,10 @@ const AuthPage = () => {
           >
             <div className="flex items-center gap-2 mb-8">
               <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
-              <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
+              <span className="text-2xl font-display font-bold text-foreground">Vulnerix</span>
             </div>
 
-            <h1 className="text-3xl font-display font-bold text-navy mb-2">
+            <h1 className="text-3xl font-display font-bold text-foreground mb-2">
               {isLogin ? 'Welcome back' : 'Create your account'}
             </h1>
             <p className="text-muted-foreground mb-8">

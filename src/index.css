@@ -91,23 +91,28 @@
     --popover-foreground: 210 40% 98%;
 
     --primary: 187 92% 42%;
-    --primary-foreground: 213 90% 10%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 213 60% 20%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 213 60% 20%;
-    --muted-foreground: 215 20% 65%;
+    --muted-foreground: 215 25% 70%;
 
     --accent: 187 92% 42%;
-    --accent-foreground: 213 90% 10%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 213 60% 20%;
-    --input: 213 60% 20%;
+    --border: 213 50% 25%;
+    --input: 213 50% 25%;
     --ring: 187 92% 42%;
+    
+    /* Dark mode specific - Navy text should be light */
+    --navy: 210 40% 98%;
+    --navy-light: 210 30% 90%;
+    --navy-dark: 210 20% 85%;
   }
 }
 
