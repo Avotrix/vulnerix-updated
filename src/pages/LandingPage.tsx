@@ -6,13 +6,20 @@ import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
-// Client data with logo URLs and website links
+// Import client logos
+import maxAerospaceLogo from "@/assets/clients/max-aerospace-logo.png";
+import glttLogo from "@/assets/clients/gltt-logo.png";
+import auxinLogo from "@/assets/clients/auxin-logo.png";
+import fyndnaLogo from "@/assets/clients/fyndna-logo.svg";
+import aagargLogo from "@/assets/clients/aagarg-logo.png";
+
+// Client data with logo imports and website links
 const clientData = [
-  { name: "Max Aerospace", url: "https://www.maxaerospace.com/", logo: null },
-  { name: "GLTT Travel", url: "https://gltt.travel/", logo: null },
-  { name: "Auxin Shipping", url: "https://auxinshipping.com/", logo: null },
-  { name: "FynDNA", url: "https://www.fyndna.com/", logo: null },
-  { name: "A A Garg & Co", url: "https://aagarg.in/", logo: null },
+  { name: "Max Aerospace", url: "https://www.maxaerospace.com/", logo: maxAerospaceLogo },
+  { name: "GLTT Travel", url: "https://gltt.travel/", logo: glttLogo },
+  { name: "Auxin Shipping", url: "https://auxinshipping.com/", logo: auxinLogo },
+  { name: "FynDNA", url: "https://www.fyndna.com/", logo: fyndnaLogo },
+  { name: "A A Garg & Co", url: "https://aagarg.in/", logo: aagargLogo },
 ];
 
 const LandingPage = () => {
@@ -206,7 +213,7 @@ const LandingPage = () => {
           }} className="text-center text-sm font-medium text-muted-foreground mb-8">
             TRUSTED BY SECURITY TEAMS WORLDWIDE
           </motion.p>
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
+          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
             {clientData.map((client, i) => (
               <motion.a
                 key={client.name}
@@ -217,12 +224,14 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border hover:border-accent hover:shadow-md transition-all"
+                className="group flex items-center justify-center p-4 rounded-xl bg-card border border-border hover:border-accent hover:shadow-lg transition-all min-w-[140px] h-[80px]"
+                title={client.name}
               >
-                <span className="text-lg font-display font-semibold text-foreground/70 group-hover:text-accent transition-colors">
-                  {client.name}
-                </span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <img 
+                  src={client.logo} 
+                  alt={`${client.name} logo`}
+                  className="max-h-12 max-w-[120px] object-contain filter dark:brightness-110 dark:contrast-110 group-hover:scale-105 transition-transform"
+                />
               </motion.a>
             ))}
           </div>
