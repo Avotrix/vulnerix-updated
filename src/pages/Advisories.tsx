@@ -181,7 +181,7 @@ const Advisories = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-navy">Advisories</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground">Advisories</h1>
             <p className="text-muted-foreground">
               {filteredAdvisories.length} vulnerabilities found
             </p>
@@ -256,7 +256,7 @@ const Advisories = () => {
                   <div className="flex-1 space-y-4">
                     {/* Title Row */}
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-mono text-lg font-bold text-navy">
+                      <span className="font-mono text-lg font-bold text-foreground">
                         {advisory.cve_id}
                       </span>
                       <SeverityBadge severity={advisory.Severity} />

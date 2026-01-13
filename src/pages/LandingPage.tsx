@@ -1,26 +1,35 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
+
+// Client data with logo URLs and website links
+const clientData = [
+  { name: "Max Aerospace", url: "https://www.maxaerospace.com/", logo: null },
+  { name: "GLTT Travel", url: "https://gltt.travel/", logo: null },
+  { name: "Auxin Shipping", url: "https://auxinshipping.com/", logo: null },
+  { name: "FynDNA", url: "https://www.fyndna.com/", logo: null },
+  { name: "A A Garg & Co", url: "https://aagarg.in/", logo: null },
+];
+
 const LandingPage = () => {
   const [showDemo, setShowDemo] = useState(false);
-  const clients = ["TechCorp", "SecureNet", "DataGuard", "CyberShield", "InfoSec Pro", "NetDefend", "CloudSafe", "RiskZero"];
   const testimonials = [{
     name: "Sarah Chen",
-    role: "CISO, TechCorp",
+    role: "CISO, Max Aerospace",
     content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
     avatar: "SC"
   }, {
     name: "Michael Rodriguez",
-    role: "Security Director, DataGuard",
+    role: "Security Director, Auxin Shipping",
     content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
     avatar: "MR"
   }, {
     name: "Emily Thompson",
-    role: "VP Engineering, SecureNet",
+    role: "VP Engineering, FynDNA",
     content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
     avatar: "ET"
   }];
@@ -51,7 +60,7 @@ const LandingPage = () => {
             x: 0
           }} className="flex items-center gap-2">
             <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
-            <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
+            <span className="text-2xl font-display font-bold text-foreground">Vulnerix</span>
           </motion.div>
           
           <nav className="hidden md:flex items-center gap-8">
@@ -101,7 +110,7 @@ const LandingPage = () => {
               y: 0
             }} transition={{
               delay: 0.3
-}} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-navy leading-tight mb-6">
+}} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-foreground leading-tight mb-6">
               Protect Your Business<br />
               <span className="text-gradient text-[#d43702]">Before It's Too Late.</span>
             </motion.h1>
@@ -152,7 +161,7 @@ const LandingPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-muted/50 rounded-xl p-4 border border-border">
                     <div className="text-xs text-muted-foreground mb-1">Total Products</div>
-                    <div className="text-2xl font-bold text-navy">247</div>
+                    <div className="text-2xl font-bold text-foreground">247</div>
                   </div>
                   <div className="bg-severity-critical/10 rounded-xl p-4 border border-severity-critical/30">
                     <div className="text-xs text-muted-foreground mb-1">Critical</div>
@@ -197,20 +206,25 @@ const LandingPage = () => {
           }} className="text-center text-sm font-medium text-muted-foreground mb-8">
             TRUSTED BY SECURITY TEAMS WORLDWIDE
           </motion.p>
-          <div className="flex flex-wrap items-center justify-center gap-12">
-            {clients.map((client, i) => <motion.div key={client} initial={{
-              opacity: 0,
-              y: 10
-            }} whileInView={{
-              opacity: 1,
-              y: 0
-            }} viewport={{
-              once: true
-            }} transition={{
-              delay: i * 0.1
-            }} className="text-xl font-display font-semibold text-muted-foreground/50">
-                {client}
-              </motion.div>)}
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
+            {clientData.map((client, i) => (
+              <motion.a
+                key={client.name}
+                href={client.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border hover:border-accent hover:shadow-md transition-all"
+              >
+                <span className="text-lg font-display font-semibold text-foreground/70 group-hover:text-accent transition-colors">
+                  {client.name}
+                </span>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </motion.a>
+            ))}
           </div>
         </div>
       </section>
@@ -227,7 +241,7 @@ const LandingPage = () => {
           }} viewport={{
             once: true
           }} className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-4xl font-display font-bold text-navy mb-4">
+            <h2 className="text-4xl font-display font-bold text-foreground mb-4">
               Core Engine Secrets
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -252,7 +266,7 @@ const LandingPage = () => {
                   <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-accent/10 text-accent mb-6">
                     <feature.icon className="h-7 w-7" />
                   </div>
-                  <h3 className="text-xl font-display font-semibold text-navy mb-3">
+                  <h3 className="text-xl font-display font-semibold text-foreground mb-3">
                     {feature.title}
                   </h3>
                   <p className="text-muted-foreground leading-relaxed">
@@ -327,7 +341,7 @@ const LandingPage = () => {
           }} className="relative max-w-4xl mx-auto text-center bg-card rounded-3xl border border-border p-12 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-navy/5" />
             <div className="relative">
-              <h2 className="text-4xl font-display font-bold text-navy mb-4">
+              <h2 className="text-4xl font-display font-bold text-foreground mb-4">
                 Ready to Secure Your Stack?
               </h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
@@ -354,7 +368,7 @@ const LandingPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-8 w-8" />
-              <span className="text-xl font-display font-bold text-navy">Vulnerix</span>
+              <span className="text-xl font-display font-bold text-foreground">Vulnerix</span>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2024 Vulnerix. All rights reserved.
