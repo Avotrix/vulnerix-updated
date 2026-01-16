@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdmin } from "@/contexts/AdminContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
@@ -67,6 +68,7 @@ const databaseSchemas = {
 const AdminPanel = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { adminLogout, settings, updateSettings, auditLogs, addAuditLog } = useAdmin();
   const [activeTab, setActiveTab] = useState('schema');
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
