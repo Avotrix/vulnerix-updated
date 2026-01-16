@@ -221,7 +221,7 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex items-center justify-center p-4 rounded-xl bg-card border border-border min-w-[140px] h-[80px]"
+                className="flex items-center justify-center p-4 rounded-xl bg-card dark:bg-gray-100 border border-border min-w-[140px] h-[80px]"
                 title={client.name}
               >
                 <img 
@@ -296,10 +296,10 @@ const LandingPage = () => {
           }} viewport={{
             once: true
           }} className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-4xl font-display font-bold text-primary-foreground mb-4">
+            <h2 className="text-4xl font-display font-bold text-primary-foreground dark:text-white mb-4">
               Trusted by Security Leaders
             </h2>
-            <p className="text-lg text-primary-foreground/70">
+            <p className="text-lg text-primary-foreground/70 dark:text-white/90">
               See what our customers say about Vulnerix
             </p>
           </motion.div>
