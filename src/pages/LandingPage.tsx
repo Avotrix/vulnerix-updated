@@ -10,16 +10,16 @@ import vulnerixLogo from "@/assets/vulnerix-logo.png";
 import maxAerospaceLogo from "@/assets/clients/max-aerospace-logo.png";
 import glttLogo from "@/assets/clients/gltt-logo.png";
 import auxinLogo from "@/assets/clients/auxin-logo.png";
-import fyndnaLogo from "@/assets/clients/fyndna-logo.svg";
 import aagargLogo from "@/assets/clients/aagarg-logo.png";
+import samarthWealthLogo from "@/assets/clients/samarth-wealth-logo.png";
 
-// Client data with logo imports and website links
+// Client data with logo imports (no hyperlinks as per requirement)
 const clientData = [
-  { name: "Max Aerospace", url: "https://www.maxaerospace.com/", logo: maxAerospaceLogo },
-  { name: "GLTT Travel", url: "https://gltt.travel/", logo: glttLogo },
-  { name: "Auxin Shipping", url: "https://auxinshipping.com/", logo: auxinLogo },
-  { name: "FynDNA", url: "https://www.fyndna.com/", logo: fyndnaLogo },
-  { name: "A A Garg & Co", url: "https://aagarg.in/", logo: aagargLogo },
+  { name: "Max Aerospace", logo: maxAerospaceLogo },
+  { name: "GLTT Travel", logo: glttLogo },
+  { name: "Auxin Shipping", logo: auxinLogo },
+  { name: "A A Garg & Co", logo: aagargLogo },
+  { name: "Samarth Wealth", logo: samarthWealthLogo },
 ];
 
 const LandingPage = () => {
@@ -211,28 +211,25 @@ const LandingPage = () => {
           }} viewport={{
             once: true
           }} className="text-center text-sm font-medium text-muted-foreground mb-8">
-            TRUSTED BY SECURITY TEAMS WORLDWIDE
+            TRUSTED BY OUR CLIENTS
           </motion.p>
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
             {clientData.map((client, i) => (
-              <motion.a
+              <motion.div
                 key={client.name}
-                href={client.url}
-                target="_blank"
-                rel="noopener noreferrer"
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="group flex items-center justify-center p-4 rounded-xl bg-card border border-border hover:border-accent hover:shadow-lg transition-all min-w-[140px] h-[80px]"
+                className="flex items-center justify-center p-4 rounded-xl bg-card border border-border min-w-[140px] h-[80px]"
                 title={client.name}
               >
                 <img 
                   src={client.logo} 
                   alt={`${client.name} logo`}
-                  className="max-h-12 max-w-[120px] object-contain filter dark:brightness-110 dark:contrast-110 group-hover:scale-105 transition-transform"
+                  className="max-h-12 max-w-[120px] object-contain filter dark:brightness-110 dark:contrast-110"
                 />
-              </motion.a>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -318,8 +315,8 @@ const LandingPage = () => {
               once: true
             }} transition={{
               delay: i * 0.1
-            }} className="bg-primary-foreground/10 backdrop-blur-lg rounded-2xl border border-primary-foreground/10 p-8">
-                <p className="text-primary-foreground/90 leading-relaxed mb-6">
+            }} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8">
+                <p className="text-white leading-relaxed mb-6">
                   "{testimonial.content}"
                 </p>
                 <div className="flex items-center gap-4">
@@ -327,8 +324,8 @@ const LandingPage = () => {
                     {testimonial.avatar}
                   </div>
                   <div>
-                    <div className="font-semibold text-primary-foreground">{testimonial.name}</div>
-                    <div className="text-sm text-primary-foreground/60">{testimonial.role}</div>
+                    <div className="font-semibold text-white">{testimonial.name}</div>
+                    <div className="text-sm text-white/70">{testimonial.role}</div>
                   </div>
                 </div>
               </motion.div>)}

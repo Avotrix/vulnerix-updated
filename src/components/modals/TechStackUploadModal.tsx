@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Upload, Download, FileSpreadsheet, AlertCircle, 
-  CheckCircle, Trash2, Eye 
+  CheckCircle, Trash2, Eye, Search 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { addTechStack, getTechStacks, setTechStacks } from "@/lib/storage";
 import { sampleTemplateData, TechStack } from "@/lib/mockData";
@@ -34,6 +35,18 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter parsed data based on search query (vendor and product name)
+  const filteredData = useMemo(() => {
+    if (!searchQuery.trim()) return parsedData;
+    const query = searchQuery.toLowerCase();
+    return parsedData.filter(
+      (row) =>
+        row["Vendor Name"]?.toLowerCase().includes(query) ||
+        row["Product Name"]?.toLowerCase().includes(query)
+    );
+  }, [parsedData, searchQuery]);
 
   const validateHeaders = (headers: string[]): boolean => {
     const normalizedHeaders = headers.map(h => h.trim());
@@ -148,6 +161,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     setFile(null);
     setParsedData([]);
     setError(null);
+    setSearchQuery("");
     onClose();
   };
 
@@ -257,10 +271,23 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
             {/* Preview */}
             {parsedData.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Preview ({parsedData.length} rows)</span>
+                    <span className="text-sm font-medium text-foreground">
+                      Preview ({filteredData.length} of {parsedData.length} rows)
+                    </span>
+                  </div>
+                  {/* Search Bar */}
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Search vendor or product..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 h-9 bg-background border-border text-foreground placeholder:text-muted-foreground"
+                    />
                   </div>
                 </div>
                 
@@ -269,40 +296,47 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Sr No.</th>
-                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Vendor</th>
-                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Product</th>
-                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Version</th>
-                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
-                          <th className="px-4 py-3 text-left font-medium text-muted-foreground"></th>
+                          <th className="px-4 py-3 text-left font-medium text-foreground">Sr No.</th>
+                          <th className="px-4 py-3 text-left font-medium text-foreground">Vendor</th>
+                          <th className="px-4 py-3 text-left font-medium text-foreground">Product</th>
+                          <th className="px-4 py-3 text-left font-medium text-foreground">Version</th>
+                          <th className="px-4 py-3 text-left font-medium text-foreground">Email</th>
+                          <th className="px-4 py-3 text-left font-medium text-foreground"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {parsedData.slice(0, 5).map((row, i) => (
+                        {filteredData.slice(0, 5).map((row, i) => (
                           <tr key={i} className="hover:bg-muted/30">
-                            <td className="px-4 py-3">{row["Sr No."]}</td>
-                            <td className="px-4 py-3">{row["Vendor Name"]}</td>
-                            <td className="px-4 py-3">{row["Product Name"]}</td>
-                            <td className="px-4 py-3 font-mono text-xs">{row["Product Version"]}</td>
+                            <td className="px-4 py-3 text-foreground">{row["Sr No."]}</td>
+                            <td className="px-4 py-3 text-foreground">{row["Vendor Name"]}</td>
+                            <td className="px-4 py-3 text-foreground">{row["Product Name"]}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-foreground">{row["Product Version"]}</td>
                             <td className="px-4 py-3 text-muted-foreground">{row["Email ID"]}</td>
                             <td className="px-4 py-3">
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-7 w-7"
-                                onClick={() => handleRemoveRow(i)}
+                                onClick={() => handleRemoveRow(parsedData.indexOf(row))}
                               >
                                 <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                               </Button>
                             </td>
                           </tr>
                         ))}
+                        {filteredData.length === 0 && searchQuery && (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+                              No results found for "{searchQuery}"
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
-                  {parsedData.length > 5 && (
+                  {filteredData.length > 5 && (
                     <div className="px-4 py-2 bg-muted/30 text-center text-xs text-muted-foreground">
-                      And {parsedData.length - 5} more rows...
+                      And {filteredData.length - 5} more rows...
                     </div>
                   )}
                 </div>
