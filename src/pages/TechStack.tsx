@@ -5,8 +5,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getTechStacks, updateTechStack, deleteTechStack, addTechStack } from "@/lib/storage";
-import { TechStack as TechStackType } from "@/lib/mockData";
+import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import TechStackUploadModal from "@/components/modals/TechStackUploadModal";
 import ManualTechStackModal from "@/components/modals/ManualTechStackModal";
@@ -23,43 +22,76 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+interface TechStackItem {
+  id: string;
+  org_name: string;
+  vendor: string;
+  product_name: string;
+  version: string | null;
+  email_id: string;
+  created_at: string | null;
+}
+
 const TechStack = () => {
   const { toast } = useToast();
-  const [techStacks, setTechStacks] = useState<TechStackType[]>([]);
+  const [techStacks, setTechStacks] = useState<TechStackItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<TechStackType>>({});
+  const [editData, setEditData] = useState<Partial<TechStackItem>>({});
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadTechStacks();
   }, []);
 
-  const loadTechStacks = () => {
-    setTechStacks(getTechStacks());
+  const loadTechStacks = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('tech_stack')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading tech stacks:', error);
+        toast({
+          title: "Error loading data",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setTechStacks(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredStacks = techStacks.filter(stack => 
-    stack.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    stack.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    stack.productVersion.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (stack.organization?.toLowerCase().includes(searchQuery.toLowerCase()))
+    stack.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    stack.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (stack.version?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    stack.org_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleEdit = (stack: TechStackType) => {
+  const handleEdit = (stack: TechStackItem) => {
     setEditingId(stack.id);
     setEditData({
-      vendorName: stack.vendorName,
-      productName: stack.productName,
-      productVersion: stack.productVersion,
-      emailId: stack.emailId
+      vendor: stack.vendor,
+      product_name: stack.product_name,
+      version: stack.version,
+      email_id: stack.email_id
     });
   };
 
-  const handleSave = (id: string) => {
+  const handleSave = async (id: string) => {
     // Validate before saving
-    if (!editData.vendorName?.trim()) {
+    if (!editData.vendor?.trim()) {
       toast({
         title: "Validation Error",
         description: "Vendor name is required",
@@ -68,7 +100,7 @@ const TechStack = () => {
       return;
     }
     
-    if (!editData.productVersion?.trim()) {
+    if (!editData.version?.trim()) {
       toast({
         title: "Validation Error",
         description: "Product version is required",
@@ -79,7 +111,7 @@ const TechStack = () => {
     
     // Version format check
     const versionRegex = /^[vV]?[\d]+([._-][\d\w]+)*$/;
-    if (!versionRegex.test(editData.productVersion.trim())) {
+    if (!versionRegex.test(editData.version.trim())) {
       toast({
         title: "Validation Error",
         description: "Invalid version format (e.g., 1.0.0, v2.1, 2024.1)",
@@ -89,7 +121,7 @@ const TechStack = () => {
     }
     
     // Email validation
-    if (editData.emailId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.emailId)) {
+    if (editData.email_id && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.email_id)) {
       toast({
         title: "Validation Error",
         description: "Invalid email format",
@@ -97,9 +129,27 @@ const TechStack = () => {
       });
       return;
     }
+
+    const { error } = await supabase
+      .from('tech_stack')
+      .update({
+        vendor: editData.vendor,
+        product_name: editData.product_name,
+        version: editData.version,
+        email_id: editData.email_id
+      })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error updating",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
     
-    updateTechStack(id, editData);
-    loadTechStacks();
+    await loadTechStacks();
     setEditingId(null);
     setEditData({});
     
@@ -109,9 +159,22 @@ const TechStack = () => {
     });
   };
 
-  const handleDelete = (id: string) => {
-    deleteTechStack(id);
-    loadTechStacks();
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from('tech_stack')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error deleting",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await loadTechStacks();
     
     toast({
       title: "Deleted",
@@ -124,16 +187,27 @@ const TechStack = () => {
     setEditData({});
   };
 
-  const handleManualAdd = (data: { organization: string; vendorName: string; productName: string; productVersion: string; emailId: string }) => {
-    addTechStack({
-      organization: data.organization,
-      vendorName: data.vendorName,
-      productName: data.productName,
-      productVersion: data.productVersion,
-      emailId: data.emailId,
-      srNo: techStacks.length + 1
-    });
-    loadTechStacks();
+  const handleManualAdd = async (data: { organization: string; vendorName: string; productName: string; productVersion: string; emailId: string }) => {
+    const { error } = await supabase
+      .from('tech_stack')
+      .insert({
+        org_name: data.organization,
+        vendor: data.vendorName,
+        product_name: data.productName,
+        version: data.productVersion,
+        email_id: data.emailId
+      });
+
+    if (error) {
+      toast({
+        title: "Error adding product",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await loadTechStacks();
     toast({
       title: "Product added",
       description: "The product has been added to your tech stack.",
@@ -205,19 +279,25 @@ const TechStack = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredStacks.map((stack) => (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : filteredStacks.map((stack) => (
                   <tr key={stack.id} className="hover:bg-muted/30 transition-colors">
                     {/* Organization - Not editable */}
                     <td className="px-6 py-4">
-                      <span className="font-medium text-navy">{stack.organization || '-'}</span>
+                      <span className="font-medium text-navy">{stack.org_name || '-'}</span>
                     </td>
                     
                     {/* Vendor - Editable */}
                     <td className="px-6 py-4">
                       {editingId === stack.id ? (
                         <Input
-                          value={editData.vendorName || ''}
-                          onChange={(e) => setEditData(prev => ({ ...prev, vendorName: e.target.value }))}
+                          value={editData.vendor || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, vendor: e.target.value }))}
                           className="h-8"
                         />
                       ) : (
@@ -225,7 +305,7 @@ const TechStack = () => {
                           <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                             <Package className="h-4 w-4 text-accent" />
                           </div>
-                          <span className="font-medium">{stack.vendorName}</span>
+                          <span className="font-medium">{stack.vendor}</span>
                         </div>
                       )}
                     </td>
@@ -234,12 +314,12 @@ const TechStack = () => {
                     <td className="px-6 py-4">
                       {editingId === stack.id ? (
                         <Input
-                          value={editData.productName || ''}
-                          onChange={(e) => setEditData(prev => ({ ...prev, productName: e.target.value }))}
+                          value={editData.product_name || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, product_name: e.target.value }))}
                           className="h-8"
                         />
                       ) : (
-                        <span>{stack.productName}</span>
+                        <span>{stack.product_name}</span>
                       )}
                     </td>
                     
@@ -247,13 +327,13 @@ const TechStack = () => {
                     <td className="px-6 py-4">
                       {editingId === stack.id ? (
                         <Input
-                          value={editData.productVersion || ''}
-                          onChange={(e) => setEditData(prev => ({ ...prev, productVersion: e.target.value }))}
+                          value={editData.version || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, version: e.target.value }))}
                           className="h-8 font-mono"
                         />
                       ) : (
                         <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                          {stack.productVersion}
+                          {stack.version}
                         </span>
                       )}
                     </td>
@@ -263,14 +343,14 @@ const TechStack = () => {
                       {editingId === stack.id ? (
                         <Input
                           type="email"
-                          value={editData.emailId || ''}
-                          onChange={(e) => setEditData(prev => ({ ...prev, emailId: e.target.value }))}
+                          value={editData.email_id || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, email_id: e.target.value }))}
                           className="h-8"
                         />
                       ) : (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Mail className="h-4 w-4" />
-                          {stack.emailId}
+                          {stack.email_id}
                         </div>
                       )}
                     </td>
@@ -318,7 +398,7 @@ const TechStack = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete product?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will remove {stack.productName} from your tech stack. 
+                                  This will remove {stack.product_name} from your tech stack. 
                                   This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
@@ -342,7 +422,7 @@ const TechStack = () => {
             </table>
           </div>
 
-          {filteredStacks.length === 0 && (
+          {!isLoading && filteredStacks.length === 0 && (
             <div className="text-center py-12">
               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No products found</h3>
