@@ -14,7 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      tech_stack: {
+        Row: {
+          created_at: string | null
+          email_id: string
+          id: string
+          org_name: string
+          product_name: string
+          vendor: string
+          version: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_id: string
+          id?: string
+          org_name: string
+          product_name: string
+          vendor: string
+          version?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_id?: string
+          id?: string
+          org_name?: string
+          product_name?: string
+          vendor?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      tech_stack_results: {
+        Row: {
+          cert_in: string | null
+          created_at: string | null
+          cve_match: string | null
+          email_id: string
+          id: string
+          org_name: string
+          product_name: string
+          severity_cert_in: string | null
+          severity_cve: string | null
+          vendor: string
+          version: string | null
+        }
+        Insert: {
+          cert_in?: string | null
+          created_at?: string | null
+          cve_match?: string | null
+          email_id: string
+          id?: string
+          org_name: string
+          product_name: string
+          severity_cert_in?: string | null
+          severity_cve?: string | null
+          vendor: string
+          version?: string | null
+        }
+        Update: {
+          cert_in?: string | null
+          created_at?: string | null
+          cve_match?: string | null
+          email_id?: string
+          id?: string
+          org_name?: string
+          product_name?: string
+          severity_cert_in?: string | null
+          severity_cve?: string | null
+          vendor?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      user_access: {
+        Row: {
+          created_at: string | null
+          pass: string
+          user_email_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          pass: string
+          user_email_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          pass?: string
+          user_email_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string | null
+          email_id: string
+          id: string
+          notification_level: string | null
+          org_name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_id: string
+          id?: string
+          notification_level?: string | null
+          org_name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_id?: string
+          id?: string
+          notification_level?: string | null
+          org_name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
