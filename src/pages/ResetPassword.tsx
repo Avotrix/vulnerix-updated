@@ -1,39 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, RefreshCw } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
-
-const USERS_KEY = 'vulnerix_users';
-const RESET_TOKENS_KEY = 'vulnerix_reset_tokens';
-
-interface ResetToken {
-  email: string;
-  token: string;
-  expiresAt: number;
-  used: boolean;
-}
-
-const getResetTokens = (): ResetToken[] => {
-  const data = localStorage.getItem(RESET_TOKENS_KEY);
-  return data ? JSON.parse(data) : [];
-};
-
-const validateToken = (token: string): ResetToken | null => {
-  const tokens = getResetTokens();
-  const found = tokens.find(t => t.token === token && !t.used && t.expiresAt > Date.now());
-  return found || null;
-};
-
-const markTokenUsed = (token: string) => {
-  const tokens = getResetTokens();
-  const updated = tokens.map(t => t.token === token ? { ...t, used: true } : t);
-  localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(updated));
-};
 
 const generateCaptcha = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -44,13 +19,27 @@ const generateCaptcha = () => {
   return captcha;
 };
 
+// Password strength indicator
+const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+  if (score < 3) return { score, label: 'Weak', color: 'bg-destructive' };
+  if (score < 5) return { score, label: 'Medium', color: 'bg-yellow-500' };
+  return { score, label: 'Strong', color: 'bg-green-500' };
+};
+
 const ResetPassword = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { updatePassword, session } = useAuth();
   
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
-  const [tokenData, setTokenData] = useState<ResetToken | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,19 +60,40 @@ const ResetPassword = () => {
   });
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      const validToken = validateToken(token);
-      if (validToken) {
+    // Check if user has a valid recovery session from Supabase Auth
+    // This happens when user clicks the reset link from email
+    const checkSession = async () => {
+      // Get the current session - if user clicked reset link, they'll have a recovery session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Also check URL hash for recovery tokens (Supabase adds these)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+      
+      if (type === 'recovery' && accessToken) {
+        // Set the session from the recovery token
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: hashParams.get('refresh_token') || ''
+        });
+        
+        if (!error) {
+          setTokenValid(true);
+          return;
+        }
+      }
+      
+      // Check if there's an existing session that allows password update
+      if (session) {
         setTokenValid(true);
-        setTokenData(validToken);
       } else {
         setTokenValid(false);
       }
-    } else {
-      setTokenValid(false);
-    }
-  }, [searchParams]);
+    };
+
+    checkSession();
+  }, []);
 
   const refreshCaptcha = () => {
     setCaptcha(generateCaptcha());
@@ -98,10 +108,19 @@ const ResetPassword = () => {
       captcha: ''
     };
     
+    // Strong password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+    } else if (!/[0-9]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one number';
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one special character';
     }
     
     if (!formData.confirmPassword) {
@@ -123,25 +142,13 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !tokenData) return;
+    if (!validateForm()) return;
     
     setIsLoading(true);
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await updatePassword(formData.password);
     
-    // Update user password
-    const usersData = localStorage.getItem(USERS_KEY);
-    const users = usersData ? JSON.parse(usersData) : [];
-    const userIndex = users.findIndex((u: any) => u.email === tokenData.email);
-    
-    if (userIndex !== -1) {
-      users[userIndex].password = formData.password;
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      
-      // Mark token as used
-      markTokenUsed(tokenData.token);
-      
+    if (result.success) {
       setIsSuccess(true);
       
       toast({
@@ -149,20 +156,24 @@ const ResetPassword = () => {
         description: "Redirecting to login page...",
       });
       
-      // Redirect to login after 2 seconds
+      // Sign out and redirect to login after 2 seconds
+      await supabase.auth.signOut();
       setTimeout(() => {
         navigate('/auth');
       }, 2000);
     } else {
       toast({
         title: "Error",
-        description: "User not found. Please try again.",
+        description: result.error || "Failed to reset password. Please try again.",
         variant: "destructive"
       });
+      refreshCaptcha();
     }
     
     setIsLoading(false);
   };
+
+  const passwordStrength = getPasswordStrength(formData.password);
 
   if (tokenValid === null) {
     return (
@@ -240,15 +251,37 @@ const ResetPassword = () => {
 
         <div className="flex items-center gap-2 mb-8">
           <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
-          <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
+          <span className="text-2xl font-display font-bold text-foreground">Vulnerix</span>
         </div>
 
-        <h1 className="text-3xl font-display font-bold text-navy mb-2">
+        <h1 className="text-3xl font-display font-bold text-foreground mb-2">
           Reset Your Password
         </h1>
         <p className="text-muted-foreground mb-8">
-          Enter your new password for <span className="font-medium text-foreground">{tokenData?.email}</span>
+          Enter your new password below
         </p>
+
+        {/* Password Requirements */}
+        <div className="bg-muted/50 rounded-lg p-4 mb-6 border border-border">
+          <p className="text-sm font-medium text-foreground mb-2">Password Requirements:</p>
+          <ul className="text-xs text-muted-foreground space-y-1">
+            <li className={formData.password.length >= 8 ? 'text-green-600' : ''}>
+              • At least 8 characters
+            </li>
+            <li className={/[A-Z]/.test(formData.password) ? 'text-green-600' : ''}>
+              • At least one uppercase letter
+            </li>
+            <li className={/[a-z]/.test(formData.password) ? 'text-green-600' : ''}>
+              • At least one lowercase letter
+            </li>
+            <li className={/[0-9]/.test(formData.password) ? 'text-green-600' : ''}>
+              • At least one number
+            </li>
+            <li className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'text-green-600' : ''}>
+              • At least one special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+            </li>
+          </ul>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
@@ -271,8 +304,26 @@ const ResetPassword = () => {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {formData.password && (
+              <div className="space-y-1">
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded ${i <= passwordStrength.score ? passwordStrength.color : 'bg-muted'}`}
+                    />
+                  ))}
+                </div>
+                <p className={`text-xs ${passwordStrength.score < 3 ? 'text-destructive' : passwordStrength.score < 5 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  Password strength: {passwordStrength.label}
+                </p>
+              </div>
+            )}
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password}</p>
+              <div className="flex items-center gap-2 text-destructive text-sm">
+                <AlertCircle className="h-4 w-4" />
+                {errors.password}
+              </div>
             )}
           </div>
 
@@ -306,7 +357,7 @@ const ResetPassword = () => {
             <Label>Captcha Verification</Label>
             <div className="flex items-center gap-3">
               <div className="flex-1 bg-muted rounded-lg px-4 py-3 font-mono text-lg tracking-widest select-none text-center border border-border">
-                <span className="bg-gradient-to-r from-navy to-accent bg-clip-text text-transparent font-bold">
+                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-bold">
                   {captcha}
                 </span>
               </div>
