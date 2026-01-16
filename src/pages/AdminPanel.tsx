@@ -98,11 +98,11 @@ const AdminPanel = () => {
   const handleSaveHomeContent = () => {
     updateSettings({ homePageContent: homeContent });
     addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Home Page',
-      actionPerformed: 'Update Content',
-      previousValue: JSON.stringify(settings.homePageContent),
-      newValue: JSON.stringify(homeContent)
+      admin_id: user?.id || '',
+      page_affected: 'Home Page',
+      action_performed: 'Update Content',
+      previous_value: JSON.stringify(settings.homePageContent),
+      new_value: JSON.stringify(homeContent)
     });
     toast({ title: "Saved", description: "Home page content updated." });
   };
@@ -110,14 +110,14 @@ const AdminPanel = () => {
   const handleSaveTheme = () => {
     updateSettings(themeSettings);
     addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Theme Settings',
-      actionPerformed: 'Update Theme',
-      previousValue: JSON.stringify({
+      admin_id: user?.id || '',
+      page_affected: 'Theme Settings',
+      action_performed: 'Update Theme',
+      previous_value: JSON.stringify({
         defaultDarkMode: settings.defaultDarkMode,
         buttonRadius: settings.buttonRadius
       }),
-      newValue: JSON.stringify(themeSettings)
+      new_value: JSON.stringify(themeSettings)
     });
     toast({ title: "Saved", description: "Theme settings updated." });
   };
@@ -125,14 +125,14 @@ const AdminPanel = () => {
   const handleSaveDashboard = () => {
     updateSettings(dashboardSettings);
     addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Dashboard',
-      actionPerformed: 'Update Display Config',
-      previousValue: JSON.stringify({
+      admin_id: user?.id || '',
+      page_affected: 'Dashboard',
+      action_performed: 'Update Display Config',
+      previous_value: JSON.stringify({
         visibleKPIs: settings.visibleKPIs,
         certInVisible: settings.certInVisible
       }),
-      newValue: JSON.stringify(dashboardSettings)
+      new_value: JSON.stringify(dashboardSettings)
     });
     toast({ title: "Saved", description: "Dashboard settings updated." });
   };
@@ -140,11 +140,11 @@ const AdminPanel = () => {
   const handleSaveNotifications = () => {
     updateSettings({ notificationSettings });
     addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Notifications',
-      actionPerformed: 'Update Settings',
-      previousValue: JSON.stringify(settings.notificationSettings),
-      newValue: JSON.stringify(notificationSettings)
+      admin_id: user?.id || '',
+      page_affected: 'Notifications',
+      action_performed: 'Update Settings',
+      previous_value: JSON.stringify(settings.notificationSettings),
+      new_value: JSON.stringify(notificationSettings)
     });
     toast({ title: "Saved", description: "Notification settings updated." });
   };
@@ -154,12 +154,12 @@ const AdminPanel = () => {
       ['ID', 'Admin ID', 'Timestamp', 'Page', 'Action', 'Previous Value', 'New Value'],
       ...auditLogs.map(log => [
         log.id,
-        log.adminId,
-        new Date(log.timestamp).toISOString(),
-        log.pageAffected,
-        log.actionPerformed,
-        log.previousValue,
-        log.newValue
+        log.admin_id,
+        new Date(log.created_at).toISOString(),
+        log.page_affected,
+        log.action_performed,
+        log.previous_value,
+        log.new_value
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -601,13 +601,13 @@ const AdminPanel = () => {
                           auditLogs.map((log, i) => (
                             <tr key={log.id} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
                               <td className="p-3 text-muted-foreground">
-                                {new Date(log.timestamp).toLocaleString()}
+                                {new Date(log.created_at).toLocaleString()}
                               </td>
-                              <td className="p-3 text-foreground">{log.adminId}</td>
-                              <td className="p-3 text-foreground">{log.pageAffected}</td>
-                              <td className="p-3 text-foreground">{log.actionPerformed}</td>
+                              <td className="p-3 text-foreground">{log.admin_id}</td>
+                              <td className="p-3 text-foreground">{log.page_affected}</td>
+                              <td className="p-3 text-foreground">{log.action_performed}</td>
                               <td className="p-3 text-muted-foreground text-xs max-w-xs truncate">
-                                {log.previousValue} → {log.newValue}
+                                {log.previous_value} → {log.new_value}
                               </td>
                             </tr>
                           ))

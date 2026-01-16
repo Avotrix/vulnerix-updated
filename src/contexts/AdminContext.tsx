@@ -1,13 +1,15 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
 
 interface AdminAuditLog {
   id: string;
-  adminId: string;
-  timestamp: Date;
-  pageAffected: string;
-  actionPerformed: string;
-  previousValue: string;
-  newValue: string;
+  admin_id: string;
+  page_affected: string;
+  action_performed: string;
+  previous_value: string | null;
+  new_value: string | null;
+  created_at: string;
 }
 
 interface AdminSettings {
@@ -48,17 +50,15 @@ interface Announcement {
 
 interface AdminContextType {
   isAdminAuthenticated: boolean;
-  adminLogin: (email: string, password: string) => Promise<boolean>;
+  isCheckingAdmin: boolean;
+  adminLogin: () => Promise<boolean>;
   adminLogout: () => void;
   settings: AdminSettings;
-  updateSettings: (newSettings: Partial<AdminSettings>) => void;
+  updateSettings: (newSettings: Partial<AdminSettings>) => Promise<void>;
   auditLogs: AdminAuditLog[];
-  addAuditLog: (log: Omit<AdminAuditLog, 'id' | 'timestamp'>) => void;
+  addAuditLog: (log: Omit<AdminAuditLog, 'id' | 'created_at'>) => Promise<void>;
+  refreshAdminStatus: () => Promise<void>;
 }
-
-const ADMIN_KEY = 'vulnerix_admin';
-const ADMIN_SETTINGS_KEY = 'vulnerix_admin_settings';
-const ADMIN_AUDIT_KEY = 'vulnerix_admin_audit';
 
 const defaultSettings: AdminSettings = {
   defaultDarkMode: false,
@@ -104,97 +104,215 @@ const defaultSettings: AdminSettings = {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
+  const { user, session } = useAuth();
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [settings, setSettings] = useState<AdminSettings>(defaultSettings);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
-  useEffect(() => {
-    // Load admin session
-    const adminSession = localStorage.getItem(ADMIN_KEY);
-    if (adminSession) {
-      const session = JSON.parse(adminSession);
-      if (session.authenticated && new Date(session.expiry) > new Date()) {
-        setIsAdminAuthenticated(true);
+  // Check if user has admin role
+  const checkAdminRole = async (): Promise<boolean> => {
+    if (!user?.id || !session) {
+      return false;
+    }
+
+    try {
+      // Query user_roles to check if user has admin role
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking admin role:', error);
+        return false;
       }
+
+      return !!data;
+    } catch (e) {
+      console.error('Error checking admin role:', e);
+      return false;
+    }
+  };
+
+  // Load admin settings from database
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('settings')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading admin settings:', error);
+        return;
+      }
+
+      if (data?.settings) {
+        setSettings({ ...defaultSettings, ...(data.settings as unknown as AdminSettings) });
+      }
+    } catch (e) {
+      console.error('Error loading settings:', e);
+    }
+  };
+
+  // Load audit logs (admin only)
+  const loadAuditLogs = async () => {
+    if (!isAdminAuthenticated) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('admin_audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      if (error) {
+        console.error('Error loading audit logs:', error);
+        return;
+      }
+
+      setAuditLogs(data || []);
+    } catch (e) {
+      console.error('Error loading audit logs:', e);
+    }
+  };
+
+  // Check admin status when user changes
+  useEffect(() => {
+    const checkAdmin = async () => {
+      setIsCheckingAdmin(true);
+      if (user && session) {
+        const isAdmin = await checkAdminRole();
+        setIsAdminAuthenticated(isAdmin);
+      } else {
+        setIsAdminAuthenticated(false);
+      }
+      setIsCheckingAdmin(false);
+    };
+
+    checkAdmin();
+    loadSettings();
+  }, [user, session]);
+
+  // Load audit logs when admin authenticates
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      loadAuditLogs();
+    }
+  }, [isAdminAuthenticated]);
+
+  const refreshAdminStatus = async () => {
+    const isAdmin = await checkAdminRole();
+    setIsAdminAuthenticated(isAdmin);
+  };
+
+  const adminLogin = async (): Promise<boolean> => {
+    // Admin login now just checks if the current authenticated user has admin role
+    // The user must already be logged in via the regular auth flow
+    if (!user || !session) {
+      return false;
     }
 
-    // Load settings
-    const savedSettings = localStorage.getItem(ADMIN_SETTINGS_KEY);
-    if (savedSettings) {
-      setSettings({ ...defaultSettings, ...JSON.parse(savedSettings) });
-    }
+    const isAdmin = await checkAdminRole();
+    setIsAdminAuthenticated(isAdmin);
 
-    // Load audit logs
-    const savedLogs = localStorage.getItem(ADMIN_AUDIT_KEY);
-    if (savedLogs) {
-      setAuditLogs(JSON.parse(savedLogs));
-    }
-  }, []);
-
-  const adminLogin = async (email: string, password: string): Promise<boolean> => {
-    // Hardcoded admin credentials (in production, this would be secure backend auth)
-    if (email === 'admin@vulnerix.com' && password === 'admin123') {
-      const session = {
-        authenticated: true,
-        adminId: 'admin-001',
-        expiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-      };
-      localStorage.setItem(ADMIN_KEY, JSON.stringify(session));
-      setIsAdminAuthenticated(true);
-      
-      addAuditLog({
-        adminId: 'admin-001',
-        pageAffected: 'Admin Auth',
-        actionPerformed: 'Login',
-        previousValue: 'N/A',
-        newValue: 'Session started'
+    if (isAdmin) {
+      await addAuditLog({
+        admin_id: user.id,
+        page_affected: 'Admin Auth',
+        action_performed: 'Login',
+        previous_value: null,
+        new_value: 'Session started'
       });
-      
-      return true;
     }
-    return false;
+
+    return isAdmin;
   };
 
   const adminLogout = () => {
-    addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Admin Auth',
-      actionPerformed: 'Logout',
-      previousValue: 'Session active',
-      newValue: 'Session ended'
-    });
-    
-    localStorage.removeItem(ADMIN_KEY);
+    if (isAdminAuthenticated && user) {
+      addAuditLog({
+        admin_id: user.id,
+        page_affected: 'Admin Auth',
+        action_performed: 'Logout',
+        previous_value: 'Session active',
+        new_value: 'Session ended'
+      });
+    }
     setIsAdminAuthenticated(false);
   };
 
-  const updateSettings = (newSettings: Partial<AdminSettings>) => {
+  const updateSettings = async (newSettings: Partial<AdminSettings>) => {
+    if (!isAdminAuthenticated || !user) return;
+
     const updated = { ...settings, ...newSettings };
-    setSettings(updated);
-    localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(updated));
+    
+    try {
+      const { data: existingSettings } = await supabase.from('admin_settings').select('id').limit(1).single();
+      const { error } = await supabase
+        .from('admin_settings')
+        .update({ 
+          settings: JSON.parse(JSON.stringify(updated)),
+          updated_at: new Date().toISOString(),
+          updated_by: user.id
+        })
+        .eq('id', existingSettings?.id);
+
+      if (error) {
+        console.error('Error updating settings:', error);
+        return;
+      }
+
+      setSettings(updated);
+    } catch (e) {
+      console.error('Error updating settings:', e);
+    }
   };
 
-  const addAuditLog = (log: Omit<AdminAuditLog, 'id' | 'timestamp'>) => {
-    const newLog: AdminAuditLog = {
-      ...log,
-      id: `log-${Date.now()}`,
-      timestamp: new Date()
-    };
-    
-    const updatedLogs = [newLog, ...auditLogs].slice(0, 1000); // Keep last 1000 logs
-    setAuditLogs(updatedLogs);
-    localStorage.setItem(ADMIN_AUDIT_KEY, JSON.stringify(updatedLogs));
+  const addAuditLog = async (log: Omit<AdminAuditLog, 'id' | 'created_at'>) => {
+    if (!isAdminAuthenticated) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('admin_audit_logs')
+        .insert({
+          admin_id: log.admin_id,
+          page_affected: log.page_affected,
+          action_performed: log.action_performed,
+          previous_value: log.previous_value,
+          new_value: log.new_value
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding audit log:', error);
+        return;
+      }
+
+      if (data) {
+        setAuditLogs(prev => [data, ...prev].slice(0, 1000));
+      }
+    } catch (e) {
+      console.error('Error adding audit log:', e);
+    }
   };
 
   return (
     <AdminContext.Provider value={{
       isAdminAuthenticated,
+      isCheckingAdmin,
       adminLogin,
       adminLogout,
       settings,
       updateSettings,
       auditLogs,
-      addAuditLog
+      addAuditLog,
+      refreshAdminStatus
     }}>
       {children}
     </AdminContext.Provider>
