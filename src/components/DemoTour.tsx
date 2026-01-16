@@ -164,7 +164,7 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
                       Step {currentStep + 1} of {demoSteps.length}
                     </p>
                   </div>
-                  <h3 className="text-xl font-display font-bold text-primary-foreground">
+                  <h3 className="text-xl font-display font-bold text-white">
                     {step.title}
                   </h3>
                 </div>
