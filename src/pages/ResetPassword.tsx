@@ -74,7 +74,6 @@ const ResetPassword = () => {
 
       // Check for error in URL (expired or invalid token)
       if (errorCode || errorDescription) {
-        console.error('Reset password error:', errorCode, errorDescription);
         setTokenValid(false);
         return;
       }
@@ -89,7 +88,6 @@ const ResetPassword = () => {
           });
 
           if (error) {
-            console.error('Error setting session:', error);
             setTokenValid(false);
             return;
           }
@@ -101,7 +99,6 @@ const ResetPassword = () => {
             return;
           }
         } catch (error) {
-          console.error('Error handling recovery token:', error);
           setTokenValid(false);
           return;
         }
@@ -120,7 +117,6 @@ const ResetPassword = () => {
           });
 
           if (error) {
-            console.error('Error setting session from query:', error);
             setTokenValid(false);
             return;
           }
@@ -130,7 +126,6 @@ const ResetPassword = () => {
             return;
           }
         } catch (error) {
-          console.error('Error handling query token:', error);
           setTokenValid(false);
           return;
         }

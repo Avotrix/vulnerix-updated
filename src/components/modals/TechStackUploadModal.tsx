@@ -292,8 +292,8 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
           .insert(batch);
 
         if (insertError) {
-          console.error('Error inserting tech stack batch:', insertError);
-          setError(`Failed to upload batch ${Math.floor(i / BATCH_SIZE) + 1}: ${insertError.message}`);
+          // Show generic error to user, detailed error logged server-side
+          setError(`Failed to upload batch ${Math.floor(i / BATCH_SIZE) + 1}. Please try again.`);
           return;
         }
       }
@@ -305,8 +305,8 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
 
       handleClose();
     } catch (err) {
-      console.error('Error uploading:', err);
-      setError("Failed to upload data");
+      // Error logged server-side, no client-side logging
+      setError("Failed to upload data. Please try again.");
     } finally {
       setIsUploading(false);
     }

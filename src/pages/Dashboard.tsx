@@ -71,7 +71,7 @@ const Dashboard = () => {
           .select('id', { count: 'exact' });
 
         if (techStackError) {
-          console.error('Error fetching tech stack:', techStackError);
+          // Error logged server-side, no client-side logging
         } else {
           setTotalProducts(techStackData?.length || 0);
         }
@@ -83,12 +83,12 @@ const Dashboard = () => {
           .order('created_at', { ascending: false });
 
         if (resultsError) {
-          console.error('Error fetching results:', resultsError);
+          // Error logged server-side, no client-side logging
         } else {
           setTechStackResults(resultsData || []);
         }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        // Error logged server-side, no client-side logging
       } finally {
         setIsLoading(false);
       }

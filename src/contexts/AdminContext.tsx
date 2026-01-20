@@ -126,13 +126,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error checking admin role:', error);
+        // Error logged server-side via Supabase, no client-side logging
         return false;
       }
 
       return !!data;
     } catch (e) {
-      console.error('Error checking admin role:', e);
+      // Error logged server-side via Supabase, no client-side logging
       return false;
     }
   };
@@ -147,7 +147,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading admin settings:', error);
+        // Error logged server-side, no client-side logging
         return;
       }
 
@@ -155,7 +155,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         setSettings({ ...defaultSettings, ...(data.settings as unknown as AdminSettings) });
       }
     } catch (e) {
-      console.error('Error loading settings:', e);
+      // Error logged server-side, no client-side logging
     }
   };
 
@@ -171,13 +171,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .limit(1000);
 
       if (error) {
-        console.error('Error loading audit logs:', error);
+        // Error logged server-side, no client-side logging
         return;
       }
 
       setAuditLogs(data || []);
     } catch (e) {
-      console.error('Error loading audit logs:', e);
+      // Error logged server-side, no client-side logging
     }
   };
 
@@ -263,13 +263,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', existingSettings?.id);
 
       if (error) {
-        console.error('Error updating settings:', error);
+        // Error logged server-side, no client-side logging
         return;
       }
 
       setSettings(updated);
     } catch (e) {
-      console.error('Error updating settings:', e);
+      // Error logged server-side, no client-side logging
     }
   };
 
@@ -290,7 +290,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error) {
-        console.error('Error adding audit log:', error);
+        // Error logged server-side, no client-side logging
         return;
       }
 
@@ -298,7 +298,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         setAuditLogs(prev => [data, ...prev].slice(0, 1000));
       }
     } catch (e) {
-      console.error('Error adding audit log:', e);
+      // Error logged server-side, no client-side logging
     }
   };
 

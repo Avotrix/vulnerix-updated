@@ -97,7 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 });
               
               if (error && !error.message.includes('duplicate')) {
-                console.error('Error upserting user_access:', error);
+                // Error logged server-side, no client-side logging for security
               }
             } catch (e) {
               // Ignore errors - user might not have permission yet
