@@ -7,8 +7,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { addTechStack, getTechStacks, setTechStacks } from "@/lib/storage";
-import { sampleTemplateData, TechStack } from "@/lib/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { sampleTemplateData } from "@/lib/mockData";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
@@ -23,12 +24,14 @@ interface ParsedRow {
   "Product Name": string;
   "Product Version": string;
   "Email ID": string;
+  "Organization"?: string;
 }
 
 const EXPECTED_HEADERS = ["Sr No.", "Vendor Name", "Product Name", "Product Version", "Email ID"];
 
 const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [file, setFile] = useState<File | null>(null);
@@ -36,6 +39,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
 
   // Filter parsed data based on search query (vendor and product name)
   const filteredData = useMemo(() => {
@@ -127,30 +131,47 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
       return;
     }
 
+    if (!organizationName.trim()) {
+      setError("Please enter an organization name");
+      return;
+    }
+
+    if (!user?.email) {
+      setError("You must be logged in to upload");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // Add each row to storage
-      const existingStacks = getTechStacks();
-      const newStacks: TechStack[] = parsedData.map((row, index) => ({
-        id: crypto.randomUUID(),
-        srNo: existingStacks.length + index + 1,
-        vendorName: row["Vendor Name"],
-        productName: row["Product Name"],
-        productVersion: row["Product Version"],
-        emailId: row["Email ID"],
-        uploadedAt: new Date().toISOString()
+      // Prepare data for database insertion
+      const techStackItems = parsedData.map((row) => ({
+        org_name: organizationName.trim(),
+        vendor: row["Vendor Name"]?.trim() || '',
+        product_name: row["Product Name"]?.trim() || '',
+        version: row["Product Version"]?.trim() || null,
+        email_id: row["Email ID"]?.trim() || user.email
       }));
 
-      setTechStacks([...existingStacks, ...newStacks]);
+      // Insert into tech_stack table
+      const { error: insertError } = await supabase
+        .from('tech_stack')
+        .insert(techStackItems);
+
+      if (insertError) {
+        console.error('Error inserting tech stack:', insertError);
+        setError(insertError.message);
+        return;
+      }
 
       toast({
         title: "Upload successful",
-        description: `${parsedData.length} products added to inventory.`,
+        description: `${parsedData.length} products added to your tech stack.`,
       });
 
       handleClose();
     } catch (err) {
+      console.error('Error uploading:', err);
       setError("Failed to upload data");
     } finally {
       setIsUploading(false);
@@ -162,6 +183,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     setParsedData([]);
     setError(null);
     setSearchQuery("");
+    setOrganizationName("");
     onClose();
   };
 
@@ -205,6 +227,17 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
 
           {/* Content */}
           <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+            {/* Organization Name Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Organization Name *</label>
+              <Input
+                placeholder="Enter your organization name"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
             {/* Download Template */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
               <div className="flex items-center gap-3">
@@ -352,7 +385,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
             <Button 
               variant="accent" 
               onClick={handleSubmit}
-              disabled={parsedData.length === 0 || isUploading}
+              disabled={parsedData.length === 0 || isUploading || !organizationName.trim()}
             >
               {isUploading ? 'Uploading...' : `Upload ${parsedData.length} Products`}
             </Button>

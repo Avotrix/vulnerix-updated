@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Building2 } from "lucide-react";
+import { X, Plus, Building2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,6 +67,16 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCustomVendor, setIsCustomVendor] = useState(false);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState("");
+
+  // Filter vendors based on search query (case-insensitive partial match)
+  const filteredVendors = useMemo(() => {
+    if (!vendorSearchQuery.trim()) return STANDARD_VENDORS;
+    const query = vendorSearchQuery.toLowerCase();
+    return STANDARD_VENDORS.filter(vendor => 
+      vendor.toLowerCase().includes(query)
+    );
+  }, [vendorSearchQuery]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -123,6 +133,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
         emailId: ''
       });
       setIsCustomVendor(false);
+      setVendorSearchQuery("");
       onClose();
     }
   };
@@ -137,6 +148,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
     });
     setErrors({});
     setIsCustomVendor(false);
+    setVendorSearchQuery("");
     onClose();
   };
 
@@ -148,6 +160,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
       setIsCustomVendor(false);
       setFormData(prev => ({ ...prev, vendorName: value }));
     }
+    setVendorSearchQuery("");
   };
 
   if (!isOpen) return null;
@@ -201,30 +214,54 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
             <div className="space-y-2">
               <Label htmlFor="vendorName">Vendor Name</Label>
               {!isCustomVendor ? (
-                <Select
-                  value={formData.vendorName || undefined}
-                  onValueChange={handleVendorSelect}
-                >
-                  <SelectTrigger className={errors.vendorName ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select a vendor" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 bg-card">
-                    {STANDARD_VENDORS.map((vendor) => (
-                      <SelectItem key={vendor} value={vendor}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          {vendor}
+                <div className="space-y-2">
+                  {/* Search Input for Vendor */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Search vendors..."
+                      value={vendorSearchQuery}
+                      onChange={(e) => setVendorSearchQuery(e.target.value)}
+                      className="pl-9 mb-2"
+                    />
+                  </div>
+                  <Select
+                    value={formData.vendorName || undefined}
+                    onValueChange={handleVendorSelect}
+                  >
+                    <SelectTrigger className={errors.vendorName ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Select a vendor" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 bg-card">
+                      {filteredVendors.length > 0 ? (
+                        filteredVendors.map((vendor) => (
+                          <SelectItem key={vendor} value={vendor}>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              {vendor}
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-sm text-muted-foreground">
+                          No vendors match "{vendorSearchQuery}"
+                        </div>
+                      )}
+                      <SelectItem value="__custom__">
+                        <div className="flex items-center gap-2 text-accent">
+                          <Plus className="h-4 w-4" />
+                          Add Custom Vendor
                         </div>
                       </SelectItem>
-                    ))}
-                    <SelectItem value="__custom__">
-                      <div className="flex items-center gap-2 text-accent">
-                        <Plus className="h-4 w-4" />
-                        Add Custom Vendor
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                  {vendorSearchQuery && filteredVendors.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      No matching vendors. Click "Add Custom Vendor" to add a new one.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-2">
                   <Input
@@ -240,6 +277,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                     onClick={() => {
                       setIsCustomVendor(false);
                       setFormData(prev => ({ ...prev, vendorName: '' }));
+                      setVendorSearchQuery("");
                     }}
                     className="text-xs text-muted-foreground"
                   >

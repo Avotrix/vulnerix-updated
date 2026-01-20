@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, RefreshCw, AlertCircle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,8 @@ const getPasswordStrength = (password: string): { score: number; label: string; 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { updatePassword, session } = useAuth();
+  const { updatePassword } = useAuth();
+  const [searchParams] = useSearchParams();
   
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -60,40 +61,94 @@ const ResetPassword = () => {
   });
 
   useEffect(() => {
-    // Check if user has a valid recovery session from Supabase Auth
-    // This happens when user clicks the reset link from email
-    const checkSession = async () => {
-      // Get the current session - if user clicked reset link, they'll have a recovery session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Also check URL hash for recovery tokens (Supabase adds these)
+    // Handle the password reset token from Supabase
+    const handlePasswordReset = async () => {
+      // Supabase sends recovery tokens in the URL hash fragment
+      // Format: #access_token=...&refresh_token=...&type=recovery
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
-      
+      const errorCode = hashParams.get('error_code');
+      const errorDescription = hashParams.get('error_description');
+
+      // Check for error in URL (expired or invalid token)
+      if (errorCode || errorDescription) {
+        console.error('Reset password error:', errorCode, errorDescription);
+        setTokenValid(false);
+        return;
+      }
+
+      // If we have a recovery token in the hash
       if (type === 'recovery' && accessToken) {
-        // Set the session from the recovery token
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: hashParams.get('refresh_token') || ''
-        });
-        
-        if (!error) {
-          setTokenValid(true);
+        try {
+          // Set the session using the recovery token
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || ''
+          });
+
+          if (error) {
+            console.error('Error setting session:', error);
+            setTokenValid(false);
+            return;
+          }
+
+          if (data.session) {
+            setTokenValid(true);
+            // Clear the hash from URL for security (without reload)
+            window.history.replaceState(null, '', window.location.pathname);
+            return;
+          }
+        } catch (error) {
+          console.error('Error handling recovery token:', error);
+          setTokenValid(false);
           return;
         }
       }
-      
-      // Check if there's an existing session that allows password update
+
+      // Also check query params (some email clients may convert # to ?)
+      const tokenFromQuery = searchParams.get('access_token');
+      const typeFromQuery = searchParams.get('type');
+      const refreshFromQuery = searchParams.get('refresh_token');
+
+      if (typeFromQuery === 'recovery' && tokenFromQuery) {
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: tokenFromQuery,
+            refresh_token: refreshFromQuery || ''
+          });
+
+          if (error) {
+            console.error('Error setting session from query:', error);
+            setTokenValid(false);
+            return;
+          }
+
+          if (data.session) {
+            setTokenValid(true);
+            return;
+          }
+        } catch (error) {
+          console.error('Error handling query token:', error);
+          setTokenValid(false);
+          return;
+        }
+      }
+
+      // Check if there's an existing valid session
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // User has a valid session (might be from clicking the link)
         setTokenValid(true);
       } else {
+        // No token and no session - invalid
         setTokenValid(false);
       }
     };
 
-    checkSession();
-  }, []);
+    handlePasswordReset();
+  }, [searchParams]);
 
   const refreshCaptcha = () => {
     setCaptcha(generateCaptcha());
