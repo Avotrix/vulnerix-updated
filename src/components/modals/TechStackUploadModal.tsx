@@ -29,6 +29,45 @@ interface ParsedRow {
 
 const EXPECTED_HEADERS = ["Sr No.", "Vendor Name", "Product Name", "Product Version", "Email ID"];
 
+// Security constants
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_ROW_COUNT = 10000;
+const MAX_FIELD_LENGTH = {
+  vendor: 200,
+  product: 200,
+  version: 50,
+  email: 255,
+  organization: 200,
+};
+
+// Sanitize field to prevent CSV injection and limit length
+const sanitizeField = (value: unknown, maxLength: number): string => {
+  if (value === null || value === undefined) return '';
+  
+  let str = String(value).trim();
+  
+  // Escape CSV/Excel formula injection (values starting with =, +, -, @, tab, carriage return)
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  
+  // Remove null bytes and control characters (except newlines for multi-line text)
+  str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  
+  // Truncate to max length
+  if (str.length > maxLength) {
+    str = str.substring(0, maxLength);
+  }
+  
+  return str;
+};
+
+// Validate email format
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email) && email.length <= MAX_FIELD_LENGTH.email;
+};
+
 const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -59,35 +98,89 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     );
   };
 
+  // Sanitize and validate parsed rows
+  const sanitizeAndValidateRows = (rows: ParsedRow[]): { valid: ParsedRow[]; errors: string[] } => {
+    const errors: string[] = [];
+    const valid: ParsedRow[] = [];
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 1;
+      
+      // Sanitize all fields
+      const sanitizedRow: ParsedRow = {
+        "Sr No.": typeof row["Sr No."] === 'number' ? row["Sr No."] : i + 1,
+        "Vendor Name": sanitizeField(row["Vendor Name"], MAX_FIELD_LENGTH.vendor),
+        "Product Name": sanitizeField(row["Product Name"], MAX_FIELD_LENGTH.product),
+        "Product Version": sanitizeField(row["Product Version"], MAX_FIELD_LENGTH.version),
+        "Email ID": sanitizeField(row["Email ID"], MAX_FIELD_LENGTH.email),
+      };
+      
+      // Validate required fields
+      if (!sanitizedRow["Vendor Name"]) {
+        errors.push(`Row ${rowNum}: Missing vendor name`);
+        continue;
+      }
+      if (!sanitizedRow["Product Name"]) {
+        errors.push(`Row ${rowNum}: Missing product name`);
+        continue;
+      }
+      
+      // Validate email format if provided
+      if (sanitizedRow["Email ID"] && !isValidEmail(sanitizedRow["Email ID"])) {
+        errors.push(`Row ${rowNum}: Invalid email format`);
+        continue;
+      }
+      
+      valid.push(sanitizedRow);
+    }
+    
+    return { valid, errors };
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
     setError(null);
+
+    // Validate file size
+    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      setError(`File too large. Maximum file size is ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`);
+      setParsedData([]);
+      return;
+    }
+
     setFile(selectedFile);
 
     const extension = selectedFile.name.split('.').pop()?.toLowerCase();
 
     try {
+      let rawData: ParsedRow[] = [];
+      
       if (extension === 'csv') {
         // Parse CSV
         const text = await selectedFile.text();
-        Papa.parse(text, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const headers = results.meta.fields || [];
-            if (!validateHeaders(headers)) {
-              setError("Invalid file format. Headers must match: Sr No., Vendor Name, Product Name, Product Version, Email ID");
-              setParsedData([]);
-              return;
-            }
-            setParsedData(results.data as ParsedRow[]);
-          },
-          error: () => {
-            setError("Failed to parse CSV file");
-          }
+        const result = await new Promise<{ data: ParsedRow[]; headers: string[] }>((resolve, reject) => {
+          Papa.parse(text, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              resolve({ 
+                data: results.data as ParsedRow[], 
+                headers: results.meta.fields || [] 
+              });
+            },
+            error: () => reject(new Error("Failed to parse CSV file"))
+          });
         });
+        
+        if (!validateHeaders(result.headers)) {
+          setError("Invalid file format. Headers must match: Sr No., Vendor Name, Product Name, Product Version, Email ID");
+          setParsedData([]);
+          return;
+        }
+        rawData = result.data;
       } else if (extension === 'xlsx' || extension === 'xls') {
         // Parse Excel
         const buffer = await selectedFile.arrayBuffer();
@@ -103,11 +196,40 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
             return;
           }
         }
-        
-        setParsedData(jsonData);
+        rawData = jsonData;
       } else {
         setError("Unsupported file format. Please upload CSV or Excel file.");
+        return;
       }
+
+      // Validate row count
+      if (rawData.length > MAX_ROW_COUNT) {
+        setError(`Too many rows. Maximum ${MAX_ROW_COUNT.toLocaleString()} rows allowed. File has ${rawData.length.toLocaleString()} rows.`);
+        setParsedData([]);
+        return;
+      }
+
+      if (rawData.length === 0) {
+        setError("File contains no data rows");
+        setParsedData([]);
+        return;
+      }
+
+      // Sanitize and validate all rows
+      const { valid, errors: validationErrors } = sanitizeAndValidateRows(rawData);
+      
+      if (validationErrors.length > 0) {
+        // Show first few errors
+        const errorPreview = validationErrors.slice(0, 3).join('; ');
+        const moreErrors = validationErrors.length > 3 ? ` (and ${validationErrors.length - 3} more issues)` : '';
+        toast({
+          title: "Some rows skipped",
+          description: `${errorPreview}${moreErrors}`,
+          variant: "destructive"
+        });
+      }
+
+      setParsedData(valid);
     } catch (err) {
       setError("Failed to read file");
     }
@@ -131,7 +253,9 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
       return;
     }
 
-    if (!organizationName.trim()) {
+    // Validate organization name with length limit
+    const sanitizedOrgName = sanitizeField(organizationName, MAX_FIELD_LENGTH.organization);
+    if (!sanitizedOrgName) {
       setError("Please enter an organization name");
       return;
     }
@@ -141,27 +265,37 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
       return;
     }
 
+    // Final row count check before upload
+    if (parsedData.length > MAX_ROW_COUNT) {
+      setError(`Too many rows. Maximum ${MAX_ROW_COUNT.toLocaleString()} rows allowed.`);
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // Prepare data for database insertion
+      // Prepare sanitized data for database insertion
       const techStackItems = parsedData.map((row) => ({
-        org_name: organizationName.trim(),
-        vendor: row["Vendor Name"]?.trim() || '',
-        product_name: row["Product Name"]?.trim() || '',
-        version: row["Product Version"]?.trim() || null,
-        email_id: row["Email ID"]?.trim() || user.email
+        org_name: sanitizedOrgName,
+        vendor: row["Vendor Name"] || '',
+        product_name: row["Product Name"] || '',
+        version: row["Product Version"] || null,
+        email_id: row["Email ID"] || user.email
       }));
 
-      // Insert into tech_stack table
-      const { error: insertError } = await supabase
-        .from('tech_stack')
-        .insert(techStackItems);
+      // Insert into tech_stack table in batches to prevent timeout
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < techStackItems.length; i += BATCH_SIZE) {
+        const batch = techStackItems.slice(i, i + BATCH_SIZE);
+        const { error: insertError } = await supabase
+          .from('tech_stack')
+          .insert(batch);
 
-      if (insertError) {
-        console.error('Error inserting tech stack:', insertError);
-        setError(insertError.message);
-        return;
+        if (insertError) {
+          console.error('Error inserting tech stack batch:', insertError);
+          setError(`Failed to upload batch ${Math.floor(i / BATCH_SIZE) + 1}: ${insertError.message}`);
+          return;
+        }
       }
 
       toast({
