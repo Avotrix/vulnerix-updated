@@ -215,17 +215,6 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
               <Label htmlFor="vendorName">Vendor Name</Label>
               {!isCustomVendor ? (
                 <div className="space-y-2">
-                  {/* Search Input for Vendor */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      placeholder="Search vendors..."
-                      value={vendorSearchQuery}
-                      onChange={(e) => setVendorSearchQuery(e.target.value)}
-                      className="pl-9 mb-2"
-                    />
-                  </div>
                   <Select
                     value={formData.vendorName || undefined}
                     onValueChange={handleVendorSelect}
@@ -233,34 +222,48 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                     <SelectTrigger className={errors.vendorName ? 'border-destructive' : ''}>
                       <SelectValue placeholder="Select a vendor" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-60 bg-card">
-                      {filteredVendors.length > 0 ? (
-                        filteredVendors.map((vendor) => (
-                          <SelectItem key={vendor} value={vendor}>
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-4 w-4 text-muted-foreground" />
-                              {vendor}
-                            </div>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2 text-sm text-muted-foreground">
-                          No vendors match "{vendorSearchQuery}"
+                    <SelectContent className="max-h-72 bg-card">
+                      {/* Search Input inside dropdown */}
+                      <div className="sticky top-0 p-2 bg-card border-b border-border">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder="Search vendors..."
+                            value={vendorSearchQuery}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setVendorSearchQuery(e.target.value);
+                            }}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            className="pl-9 h-8 text-sm"
+                          />
                         </div>
-                      )}
-                      <SelectItem value="__custom__">
-                        <div className="flex items-center gap-2 text-accent">
-                          <Plus className="h-4 w-4" />
-                          Add Custom Vendor
-                        </div>
-                      </SelectItem>
+                      </div>
+                      <div className="pt-1">
+                        {filteredVendors.length > 0 ? (
+                          filteredVendors.map((vendor) => (
+                            <SelectItem key={vendor} value={vendor}>
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                {vendor}
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-4 py-2 text-sm text-muted-foreground">
+                            No vendors match "{vendorSearchQuery}"
+                          </div>
+                        )}
+                        <SelectItem value="__custom__">
+                          <div className="flex items-center gap-2 text-accent">
+                            <Plus className="h-4 w-4" />
+                            Add Custom Vendor
+                          </div>
+                        </SelectItem>
+                      </div>
                     </SelectContent>
                   </Select>
-                  {vendorSearchQuery && filteredVendors.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      No matching vendors. Click "Add Custom Vendor" to add a new one.
-                    </p>
-                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
