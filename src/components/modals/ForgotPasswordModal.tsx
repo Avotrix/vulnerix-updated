@@ -45,8 +45,15 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
     
     setIsLoading(true);
     
-    // Use Supabase Auth password reset - always returns success to prevent email enumeration
-    await resetPassword(email);
+    // Use Supabase Auth password reset with rate limiting
+    const result = await resetPassword(email);
+    
+    if (!result.success && result.error) {
+      // Rate limit hit - show error
+      setError(result.error);
+      setIsLoading(false);
+      return;
+    }
     
     setIsSuccess(true);
     

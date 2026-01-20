@@ -205,20 +205,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setSession(null);
   };
 
+  // Rate limiting state for password reset (prevents email flooding)
+  const resetCooldownRef = React.useRef<number>(0);
+  const RESET_COOLDOWN_MS = 60000; // 1 minute cooldown
+
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    // Client-side rate limiting to prevent email flooding
+    const now = Date.now();
+    if (now - resetCooldownRef.current < RESET_COOLDOWN_MS) {
+      const remainingSeconds = Math.ceil((RESET_COOLDOWN_MS - (now - resetCooldownRef.current)) / 1000);
+      return { 
+        success: false, 
+        error: `Please wait ${remainingSeconds} seconds before requesting another reset` 
+      };
+    }
+    
     try {
+      // Normalize response time to prevent timing attacks
+      const startTime = Date.now();
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}/reset-password`
       });
 
+      // Set cooldown after successful request
+      resetCooldownRef.current = Date.now();
+
+      // Normalize response time (min 200ms) to prevent timing-based account enumeration
+      const elapsed = Date.now() - startTime;
+      const minTime = 200;
+      if (elapsed < minTime) {
+        await new Promise(resolve => setTimeout(resolve, minTime - elapsed));
+      }
+
       if (error) {
-        // Don't reveal if email exists or not
-        return { success: true }; // Always return success to prevent email enumeration
+        // Don't reveal if email exists or not - always return success
+        return { success: true };
       }
 
       return { success: true };
     } catch (error) {
-      return { success: true }; // Always return success to prevent email enumeration
+      // Always return success to prevent email enumeration
+      return { success: true };
     }
   };
 
