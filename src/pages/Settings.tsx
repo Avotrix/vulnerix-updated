@@ -162,7 +162,7 @@ const Settings = () => {
           .eq('user_id', user.id);
         
         if (deleteError) {
-          console.error('Error deleting user_access:', deleteError);
+          // Error logged server-side, no client-side logging
         }
       }
 

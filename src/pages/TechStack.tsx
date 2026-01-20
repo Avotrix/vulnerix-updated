@@ -55,10 +55,10 @@ const TechStack = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading tech stacks:', error);
+        // Show generic error to user, detailed error logged server-side
         toast({
           title: "Error loading data",
-          description: error.message,
+          description: "Failed to load tech stack. Please try again.",
           variant: "destructive"
         });
         return;
@@ -66,7 +66,7 @@ const TechStack = () => {
 
       setTechStacks(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      // Error logged server-side, no client-side logging
     } finally {
       setIsLoading(false);
     }
