@@ -27,9 +27,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { getUser } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 const SETTINGS_KEY = 'vulnerix_settings';
+const USERS_KEY = 'vulnerix_users';
 
 interface SettingsData {
   emailNotifications: boolean;
@@ -141,55 +141,44 @@ const Settings = () => {
     setIsDeleting(true);
     setDeleteError('');
 
-    try {
-      // Verify password via Supabase re-authentication (server-side verification)
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user?.email || '',
-        password: deletePassword
-      });
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (authError) {
-        setDeleteError('Incorrect password. Please try again.');
-        setIsDeleting(false);
-        return;
-      }
+    // Get users from localStorage and verify password
+    const usersData = localStorage.getItem(USERS_KEY);
+    const users = usersData ? JSON.parse(usersData) : [];
+    const currentUser = users.find((u: any) => u.email === user?.email);
 
-      // Delete user_access record (which triggers CASCADE delete on related tables)
-      if (user?.id) {
-        const { error: deleteError } = await supabase
-          .from('user_access')
-          .delete()
-          .eq('user_id', user.id);
-        
-        if (deleteError) {
-          // Error logged server-side, no client-side logging
-        }
-      }
-
-      // Clear all user-related local data
-      localStorage.removeItem('vulnerix_user');
-      localStorage.removeItem('vulnerix_settings');
-      localStorage.removeItem('vulnerix_tech_stacks');
-      localStorage.removeItem('vulnerix_advisories');
-      localStorage.removeItem('vulnerix_email_queue');
-      localStorage.removeItem('vulnerix_visited');
-      localStorage.removeItem('vulnerix_tour_completed');
-      localStorage.removeItem('vulnerix_read_notifications');
-
-      toast({
-        title: "Account deleted",
-        description: "Your account has been permanently deleted.",
-      });
-
-      // Logout and redirect to home
+    if (!currentUser || currentUser.password !== deletePassword) {
+      setDeleteError('Incorrect password. Please try again.');
       setIsDeleting(false);
-      setShowDeleteDialog(false);
-      logout();
-      navigate('/');
-    } catch (error) {
-      setDeleteError('An error occurred. Please try again.');
-      setIsDeleting(false);
+      return;
     }
+
+    // Remove user from users list
+    const updatedUsers = users.filter((u: any) => u.email !== user?.email);
+    localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+
+    // Clear all user-related data
+    localStorage.removeItem('vulnerix_user');
+    localStorage.removeItem('vulnerix_settings');
+    localStorage.removeItem('vulnerix_tech_stacks');
+    localStorage.removeItem('vulnerix_advisories');
+    localStorage.removeItem('vulnerix_email_queue');
+    localStorage.removeItem('vulnerix_visited');
+    localStorage.removeItem('vulnerix_tour_completed');
+    localStorage.removeItem('vulnerix_read_notifications');
+
+    toast({
+      title: "Account deleted",
+      description: "Your account has been permanently deleted.",
+    });
+
+    // Logout and redirect to home
+    setIsDeleting(false);
+    setShowDeleteDialog(false);
+    logout();
+    navigate('/');
   };
 
   return (

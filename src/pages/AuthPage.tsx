@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, Building2, Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
+import { Mail, Lock, User, Building2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,21 +9,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 import ForgotPasswordModal from "@/components/modals/ForgotPasswordModal";
-
-// Password strength indicator
-const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
-
-  if (score < 3) return { score, label: 'Weak', color: 'bg-destructive' };
-  if (score < 5) return { score, label: 'Medium', color: 'bg-yellow-500' };
-  return { score, label: 'Strong', color: 'bg-green-500' };
-};
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
@@ -43,52 +28,8 @@ const AuthPage = () => {
     organization: ''
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (!isLogin) {
-      // Strong password validation for registration only
-      if (formData.password.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters';
-      } else if (!/[A-Z]/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one uppercase letter';
-      } else if (!/[a-z]/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one lowercase letter';
-      } else if (!/[0-9]/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one number';
-      } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-        newErrors.password = 'Password must contain at least one special character';
-      }
-    }
-
-    if (!isLogin) {
-      if (!formData.name.trim()) {
-        newErrors.name = 'Name is required';
-      }
-      if (!formData.organization.trim()) {
-        newErrors.organization = 'Organization is required';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
     setIsLoading(true);
 
     try {
@@ -108,6 +49,16 @@ const AuthPage = () => {
           });
         }
       } else {
+        if (!formData.name || !formData.organization) {
+          toast({
+            title: "Missing information",
+            description: "Please fill in all fields.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         const result = await register(
           formData.email, 
           formData.password, 
@@ -139,8 +90,6 @@ const AuthPage = () => {
       setIsLoading(false);
     }
   };
-
-  const passwordStrength = getPasswordStrength(formData.password);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -174,30 +123,6 @@ const AuthPage = () => {
               }
             </p>
 
-            {/* Password requirements for registration */}
-            {!isLogin && (
-              <div className="bg-muted/50 rounded-lg p-4 mb-6 border border-border">
-                <p className="text-sm font-medium text-foreground mb-2">Password Requirements:</p>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li className={formData.password.length >= 8 ? 'text-green-600' : ''}>
-                    • At least 8 characters
-                  </li>
-                  <li className={/[A-Z]/.test(formData.password) ? 'text-green-600' : ''}>
-                    • At least one uppercase letter
-                  </li>
-                  <li className={/[a-z]/.test(formData.password) ? 'text-green-600' : ''}>
-                    • At least one lowercase letter
-                  </li>
-                  <li className={/[0-9]/.test(formData.password) ? 'text-green-600' : ''}>
-                    • At least one number
-                  </li>
-                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'text-green-600' : ''}>
-                    • At least one special character
-                  </li>
-                </ul>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
                 <>
@@ -211,18 +136,10 @@ const AuthPage = () => {
                         placeholder="John Doe"
                         className="pl-10"
                         value={formData.name}
-                        onChange={(e) => {
-                          setFormData(prev => ({ ...prev, name: e.target.value }));
-                          setErrors(prev => ({ ...prev, name: '' }));
-                        }}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        required={!isLogin}
                       />
                     </div>
-                    {errors.name && (
-                      <div className="flex items-center gap-2 text-destructive text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        {errors.name}
-                      </div>
-                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -235,18 +152,10 @@ const AuthPage = () => {
                         placeholder="Acme Corp"
                         className="pl-10"
                         value={formData.organization}
-                        onChange={(e) => {
-                          setFormData(prev => ({ ...prev, organization: e.target.value }));
-                          setErrors(prev => ({ ...prev, organization: '' }));
-                        }}
+                        onChange={(e) => setFormData(prev => ({ ...prev, organization: e.target.value }))}
+                        required={!isLogin}
                       />
                     </div>
-                    {errors.organization && (
-                      <div className="flex items-center gap-2 text-destructive text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        {errors.organization}
-                      </div>
-                    )}
                   </div>
                 </>
               )}
@@ -261,18 +170,10 @@ const AuthPage = () => {
                     placeholder="you@company.com"
                     className="pl-10"
                     value={formData.email}
-                    onChange={(e) => {
-                      setFormData(prev => ({ ...prev, email: e.target.value }));
-                      setErrors(prev => ({ ...prev, email: '' }));
-                    }}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    required
                   />
                 </div>
-                {errors.email && (
-                  <div className="flex items-center gap-2 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.email}
-                  </div>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -285,10 +186,9 @@ const AuthPage = () => {
                     placeholder="••••••••"
                     className="pl-10 pr-10"
                     value={formData.password}
-                    onChange={(e) => {
-                      setFormData(prev => ({ ...prev, password: e.target.value }));
-                      setErrors(prev => ({ ...prev, password: '' }));
-                    }}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                    minLength={6}
                   />
                   <button
                     type="button"
@@ -298,27 +198,6 @@ const AuthPage = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {!isLogin && formData.password && (
-                  <div className="space-y-1">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div
-                          key={i}
-                          className={`h-1 flex-1 rounded ${i <= passwordStrength.score ? passwordStrength.color : 'bg-muted'}`}
-                        />
-                      ))}
-                    </div>
-                    <p className={`text-xs ${passwordStrength.score < 3 ? 'text-destructive' : passwordStrength.score < 5 ? 'text-yellow-600' : 'text-green-600'}`}>
-                      Password strength: {passwordStrength.label}
-                    </p>
-                  </div>
-                )}
-                {errors.password && (
-                  <div className="flex items-center gap-2 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.password}
-                  </div>
-                )}
               </div>
 
               {isLogin && (
@@ -349,10 +228,7 @@ const AuthPage = () => {
                 {isLogin ? "Don't have an account? " : "Already have an account? "}
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLogin(!isLogin);
-                    setErrors({});
-                  }}
+                  onClick={() => setIsLogin(!isLogin)}
                   className="text-accent font-medium hover:underline"
                 >
                   {isLogin ? 'Sign up' : 'Sign in'}

@@ -5,25 +5,53 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const USERS_KEY = 'vulnerix_users';
+const RESET_TOKENS_KEY = 'vulnerix_reset_tokens';
+
+interface ResetToken {
+  email: string;
+  token: string;
+  expiresAt: number;
+  used: boolean;
+}
+
+const getUsers = (): Array<{ email: string; password: string }> => {
+  const data = localStorage.getItem(USERS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+const saveResetToken = (token: ResetToken) => {
+  const data = localStorage.getItem(RESET_TOKENS_KEY);
+  const tokens: ResetToken[] = data ? JSON.parse(data) : [];
+  // Remove old tokens for same email
+  const filtered = tokens.filter(t => t.email !== token.email);
+  filtered.push(token);
+  localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(filtered));
+};
+
+const generateToken = () => {
+  return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+};
+
 const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
   const { toast } = useToast();
-  const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [resetLink, setResetLink] = useState('');
 
   const handleClose = () => {
     setEmail('');
     setError('');
     setIsSuccess(false);
+    setResetLink('');
     onClose();
   };
 
@@ -45,24 +73,49 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
     
     setIsLoading(true);
     
-    // Use Supabase Auth password reset with rate limiting
-    const result = await resetPassword(email);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    if (!result.success && result.error) {
-      // Rate limit hit - show error
-      setError(result.error);
+    // Check if email exists in registered users
+    const users = getUsers();
+    const userExists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    if (!userExists) {
+      setError('This email is not registered. Please sign up first.');
       setIsLoading(false);
       return;
     }
     
+    // Generate reset token
+    const token = generateToken();
+    const resetToken: ResetToken = {
+      email: email.toLowerCase(),
+      token,
+      expiresAt: Date.now() + (30 * 60 * 1000), // 30 minutes
+      used: false
+    };
+    
+    saveResetToken(resetToken);
+    
+    // Generate reset link (in real app, this would be sent via email)
+    const link = `${window.location.origin}/reset-password?token=${token}`;
+    setResetLink(link);
     setIsSuccess(true);
     
     toast({
-      title: "Reset email sent",
-      description: "If an account exists with this email, you'll receive a password reset link.",
+      title: "Reset link generated!",
+      description: "In production, this would be sent to your email.",
     });
     
     setIsLoading(false);
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(resetLink);
+    toast({
+      title: "Link copied!",
+      description: "The reset link has been copied to your clipboard.",
+    });
   };
 
   return (
@@ -102,17 +155,25 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
                   <div className="bg-accent/10 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="h-8 w-8 text-accent" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Check Your Inbox</h3>
+                  <h3 className="text-lg font-semibold mb-2">Reset Link Generated</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    If an account exists for <strong>{email}</strong>, we've sent a password reset link.
-                    Please check your email and follow the instructions.
+                    In a production environment, a reset link would be sent to <strong>{email}</strong>.
+                    For demo purposes, use the link below:
                   </p>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    The link will expire in 1 hour. If you don't see the email, check your spam folder.
+                  <div className="bg-muted rounded-lg p-3 text-xs font-mono break-all text-left mb-4">
+                    {resetLink}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={handleClose} className="flex-1">
+                      Close
+                    </Button>
+                    <Button variant="accent" onClick={copyLink} className="flex-1">
+                      Copy Link
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4">
+                    This link expires in 30 minutes and can only be used once.
                   </p>
-                  <Button variant="accent" onClick={handleClose} className="w-full">
-                    Close
-                  </Button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit}>

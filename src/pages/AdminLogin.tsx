@@ -1,43 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Lock, Mail, Shield, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAdmin } from "@/contexts/AdminContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { adminLogin, isAdminAuthenticated, isCheckingAdmin } = useAdmin();
-  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { adminLogin } = useAdmin();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
 
-  // Redirect if already admin
-  useEffect(() => {
-    if (isAdminAuthenticated) {
-      navigate('/admin/panel');
-    }
-  }, [isAdminAuthenticated, navigate]);
-
-  const handleAccessAdmin = async () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in first to access the admin panel.",
-        variant: "destructive"
-      });
-      navigate('/auth');
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await adminLogin();
+      const success = await adminLogin(formData.email, formData.password);
       
       if (success) {
         toast({
@@ -48,28 +36,20 @@ const AdminLogin = () => {
       } else {
         toast({
           title: "Access Denied",
-          description: "You do not have admin privileges. Contact your administrator if you believe this is an error.",
+          description: "Invalid admin credentials.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to verify admin access. Please try again.",
+        description: "Authentication failed. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (authLoading || isCheckingAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -97,50 +77,49 @@ const AdminLogin = () => {
             </div>
           </div>
 
-          {!isAuthenticated ? (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-yellow-700">Authentication Required</p>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    You must be logged in with an account that has admin privileges to access this panel.
-                  </p>
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="admin-email" className="text-foreground">Admin Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="admin-email"
+                  type="email"
+                  placeholder="admin@vulnerix.com"
+                  className="pl-10"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  required
+                />
               </div>
-              
-              <Button 
-                variant="navy" 
-                size="lg" 
-                className="w-full"
-                onClick={() => navigate('/auth')}
-              >
-                Sign In to Continue
-              </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                <p className="text-sm text-muted-foreground">
-                  Signed in as: <strong className="text-foreground">{user?.email}</strong>
-                </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="admin-password" className="text-foreground">Admin Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="admin-password"
+                  type="password"
+                  placeholder="••••••••"
+                  className="pl-10"
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                />
               </div>
-
-              <Button 
-                variant="destructive" 
-                size="lg" 
-                className="w-full"
-                onClick={handleAccessAdmin}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Verifying Access...' : 'Access Admin Panel'}
-              </Button>
-
-              <p className="text-xs text-center text-muted-foreground">
-                Admin access is verified server-side based on your assigned role.
-              </p>
             </div>
-          )}
+
+            <Button 
+              type="submit" 
+              variant="destructive" 
+              size="lg" 
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Authenticating...' : 'Access Admin Panel'}
+            </Button>
+          </form>
 
           <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
             <div className="flex items-start gap-3">
