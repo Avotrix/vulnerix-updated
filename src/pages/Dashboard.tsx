@@ -1,5 +1,5 @@
 // Dashboard page component
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   Shield, Package, AlertTriangle, AlertCircle, Info,
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SeverityBadge } from "@/components/ui/severity-badge";
 import { useDashboardStats, useTechStackResults } from "@/hooks/useSupabaseData";
+import { useRealtimeResults } from "@/hooks/useRealtimeResults";
 import { getCertInToggle, setCertInToggle } from "@/lib/storage";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Switch } from "@/components/ui/switch";
@@ -24,9 +25,19 @@ import {
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis } from "recharts";
 
 const Dashboard = () => {
-  const { stats, isLoading: statsLoading } = useDashboardStats();
-  const { results: allAdvisories, isLoading: advisoriesLoading } = useTechStackResults();
+  const { stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
+  const { results: allAdvisories, isLoading: advisoriesLoading, refetch: refetchResults } = useTechStackResults();
   const [certInEnabled, setCertInEnabledState] = useState(getCertInToggle);
+
+  // Real-time subscription for auto-updating dashboard
+  const handleRealtimeUpdate = useCallback(() => {
+    console.log('[Dashboard] Real-time update received, refetching data...');
+    refetchStats();
+    refetchResults();
+  }, [refetchStats, refetchResults]);
+
+  // Subscribe to real-time updates from tech_stack_results
+  useRealtimeResults(handleRealtimeUpdate);
 
   const handleCertInToggle = (enabled: boolean) => {
     setCertInEnabledState(enabled);
