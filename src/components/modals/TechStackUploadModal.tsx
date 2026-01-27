@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { sampleTemplateData } from "@/lib/mockData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserSettings, useTechStacks } from "@/hooks/useSupabaseData";
+import { useCVEEngine } from "@/hooks/useCVEEngine";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
@@ -33,6 +34,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
   const { user } = useAuth();
   const { settings } = useUserSettings();
   const { addMultipleTechStacks } = useTechStacks();
+  const { triggerEngineBackground } = useCVEEngine();
   
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
@@ -149,9 +151,12 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
 
       await addMultipleTechStacks(stacksToInsert);
 
+      // Trigger CVE engine in background after upload
+      triggerEngineBackground();
+
       toast({
         title: "Upload successful",
-        description: `${parsedData.length} products added to tech stack.`,
+        description: `${parsedData.length} products added to tech stack. CVE scanning started.`,
       });
 
       handleClose();
