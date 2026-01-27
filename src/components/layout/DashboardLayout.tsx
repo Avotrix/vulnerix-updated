@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,6 +66,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { isAdminAuthenticated } = useAdmin();
   const { results: advisories } = useTechStackResults();
   const [notifications, setNotifications] = useState<Advisory[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -281,6 +283,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-card">
+                {isAdminAuthenticated && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/admin/panel')}>
+                      <Shield className="h-4 w-4 mr-2 text-destructive" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="h-4 w-4 mr-2" />
                   Profile
