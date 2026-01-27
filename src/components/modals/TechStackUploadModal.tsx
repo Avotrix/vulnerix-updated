@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Upload, Download, FileSpreadsheet, AlertCircle, 
@@ -7,8 +7,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { addTechStack, getTechStacks, setTechStacks } from "@/lib/storage";
-import { sampleTemplateData, TechStack } from "@/lib/mockData";
+import { sampleTemplateData } from "@/lib/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserSettings, useTechStacks } from "@/hooks/useSupabaseData";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
@@ -29,7 +30,9 @@ const EXPECTED_HEADERS = ["Sr No.", "Vendor Name", "Product Name", "Product Vers
 
 const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { settings } = useUserSettings();
+  const { addMultipleTechStacks } = useTechStacks();
   
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
@@ -127,31 +130,33 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
       return;
     }
 
+    if (!user?.email) {
+      setError("You must be logged in to upload");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // Add each row to storage
-      const existingStacks = getTechStacks();
-      const newStacks: TechStack[] = parsedData.map((row, index) => ({
-        id: crypto.randomUUID(),
-        srNo: existingStacks.length + index + 1,
-        vendorName: row["Vendor Name"],
-        productName: row["Product Name"],
-        productVersion: row["Product Version"],
-        emailId: row["Email ID"],
-        uploadedAt: new Date().toISOString()
+      // Map parsed data to database format
+      const stacksToInsert = parsedData.map((row) => ({
+        vendor: row["Vendor Name"],
+        product_name: row["Product Name"],
+        version: row["Product Version"],
+        org_name: settings?.org_name || 'Default Organization',
+        email_id: user.email!
       }));
 
-      setTechStacks([...existingStacks, ...newStacks]);
+      await addMultipleTechStacks(stacksToInsert);
 
       toast({
         title: "Upload successful",
-        description: `${parsedData.length} products added to inventory.`,
+        description: `${parsedData.length} products added to tech stack.`,
       });
 
       handleClose();
-    } catch (err) {
-      setError("Failed to upload data");
+    } catch (err: any) {
+      setError(err.message || "Failed to upload data");
     } finally {
       setIsUploading(false);
     }
@@ -194,7 +199,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                 <Upload className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <h2 className="text-xl font-display font-semibold text-navy">Upload Tech Stack</h2>
+                <h2 className="text-xl font-display font-semibold text-foreground">Upload Tech Stack</h2>
                 <p className="text-sm text-muted-foreground">Import your technology inventory</p>
               </div>
             </div>
@@ -227,7 +232,6 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
               }`}
             >
               <input
-                ref={fileInputRef}
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileSelect}
@@ -245,7 +249,6 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                       e.stopPropagation();
                       setFile(null);
                       setParsedData([]);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
                   >
                     Change

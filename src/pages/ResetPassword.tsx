@@ -1,63 +1,25 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, RefreshCw } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
-const USERS_KEY = 'vulnerix_users';
-const RESET_TOKENS_KEY = 'vulnerix_reset_tokens';
-
-interface ResetToken {
-  email: string;
-  token: string;
-  expiresAt: number;
-  used: boolean;
-}
-
-const getResetTokens = (): ResetToken[] => {
-  const data = localStorage.getItem(RESET_TOKENS_KEY);
-  return data ? JSON.parse(data) : [];
-};
-
-const validateToken = (token: string): ResetToken | null => {
-  const tokens = getResetTokens();
-  const found = tokens.find(t => t.token === token && !t.used && t.expiresAt > Date.now());
-  return found || null;
-};
-
-const markTokenUsed = (token: string) => {
-  const tokens = getResetTokens();
-  const updated = tokens.map(t => t.token === token ? { ...t, used: true } : t);
-  localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(updated));
-};
-
-const generateCaptcha = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let captcha = '';
-  for (let i = 0; i < 6; i++) {
-    captcha += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return captcha;
-};
-
 const ResetPassword = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { updatePassword } = useAuth();
   
-  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
-  const [tokenData, setTokenData] = useState<ResetToken | null>(null);
+  const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
-  const [captcha, setCaptcha] = useState(generateCaptcha());
-  const [captchaInput, setCaptchaInput] = useState('');
   
   const [formData, setFormData] = useState({
     password: '',
@@ -66,36 +28,45 @@ const ResetPassword = () => {
   
   const [errors, setErrors] = useState({
     password: '',
-    confirmPassword: '',
-    captcha: ''
+    confirmPassword: ''
   });
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      const validToken = validateToken(token);
-      if (validToken) {
-        setTokenValid(true);
-        setTokenData(validToken);
+    // Check if user has a valid recovery session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Check if this is a recovery session
+      if (session) {
+        setIsValidSession(true);
       } else {
-        setTokenValid(false);
-      }
-    } else {
-      setTokenValid(false);
-    }
-  }, [searchParams]);
+        // Listen for auth state change (user clicking email link)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            setIsValidSession(true);
+          } else if (event === 'SIGNED_IN' && session) {
+            setIsValidSession(true);
+          }
+        });
 
-  const refreshCaptcha = () => {
-    setCaptcha(generateCaptcha());
-    setCaptchaInput('');
-    setErrors(prev => ({ ...prev, captcha: '' }));
-  };
+        // Wait a moment for the auth state to update
+        setTimeout(() => {
+          if (isValidSession === null) {
+            setIsValidSession(false);
+          }
+        }, 2000);
+
+        return () => subscription.unsubscribe();
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const validateForm = () => {
     const newErrors = {
       password: '',
-      confirmPassword: '',
-      captcha: ''
+      confirmPassword: ''
     };
     
     if (!formData.password) {
@@ -110,53 +81,34 @@ const ResetPassword = () => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     
-    if (!captchaInput) {
-      newErrors.captcha = 'Please enter the captcha';
-    } else if (captchaInput !== captcha) {
-      newErrors.captcha = 'Captcha does not match';
-    }
-    
     setErrors(newErrors);
-    return !newErrors.password && !newErrors.confirmPassword && !newErrors.captcha;
+    return !newErrors.password && !newErrors.confirmPassword;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !tokenData) return;
+    if (!validateForm()) return;
     
     setIsLoading(true);
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const result = await updatePassword(formData.password);
     
-    // Update user password
-    const usersData = localStorage.getItem(USERS_KEY);
-    const users = usersData ? JSON.parse(usersData) : [];
-    const userIndex = users.findIndex((u: any) => u.email === tokenData.email);
-    
-    if (userIndex !== -1) {
-      users[userIndex].password = formData.password;
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      
-      // Mark token as used
-      markTokenUsed(tokenData.token);
-      
+    if (result.success) {
       setIsSuccess(true);
-      
       toast({
         title: "Password reset successful!",
-        description: "Redirecting to login page...",
+        description: "Redirecting to dashboard...",
       });
       
-      // Redirect to login after 2 seconds
+      // Redirect to dashboard after 2 seconds
       setTimeout(() => {
-        navigate('/auth');
+        navigate('/dashboard');
       }, 2000);
     } else {
       toast({
         title: "Error",
-        description: "User not found. Please try again.",
+        description: result.error || "Failed to reset password. Please try again.",
         variant: "destructive"
       });
     }
@@ -164,7 +116,7 @@ const ResetPassword = () => {
     setIsLoading(false);
   };
 
-  if (tokenValid === null) {
+  if (isValidSession === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
@@ -172,7 +124,7 @@ const ResetPassword = () => {
     );
   }
 
-  if (!tokenValid) {
+  if (!isValidSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <motion.div
@@ -215,7 +167,7 @@ const ResetPassword = () => {
             Password Reset Successful!
           </h1>
           <p className="text-muted-foreground mb-6">
-            Your password has been updated. Redirecting to login...
+            Your password has been updated. Redirecting to dashboard...
           </p>
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent mx-auto"></div>
         </motion.div>
@@ -240,14 +192,14 @@ const ResetPassword = () => {
 
         <div className="flex items-center gap-2 mb-8">
           <img src={vulnerixLogo} alt="Vulnerix Logo" className="h-10 w-10" />
-          <span className="text-2xl font-display font-bold text-navy">Vulnerix</span>
+          <span className="text-2xl font-display font-bold text-foreground">Vulnerix</span>
         </div>
 
-        <h1 className="text-3xl font-display font-bold text-navy mb-2">
+        <h1 className="text-3xl font-display font-bold text-foreground mb-2">
           Reset Your Password
         </h1>
         <p className="text-muted-foreground mb-8">
-          Enter your new password for <span className="font-medium text-foreground">{tokenData?.email}</span>
+          Enter your new password below.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -298,34 +250,6 @@ const ResetPassword = () => {
             </div>
             {errors.confirmPassword && (
               <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-            )}
-          </div>
-
-          {/* Captcha */}
-          <div className="space-y-2">
-            <Label>Captcha Verification</Label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 bg-muted rounded-lg px-4 py-3 font-mono text-lg tracking-widest select-none text-center border border-border">
-                <span className="bg-gradient-to-r from-navy to-accent bg-clip-text text-transparent font-bold">
-                  {captcha}
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={refreshCaptcha}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-            <Input
-              placeholder="Enter captcha"
-              value={captchaInput}
-              onChange={(e) => setCaptchaInput(e.target.value)}
-            />
-            {errors.captcha && (
-              <p className="text-sm text-destructive">{errors.captcha}</p>
             )}
           </div>
 

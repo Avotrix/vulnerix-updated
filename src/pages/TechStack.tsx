@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { 
-  Package, Search, Edit2, Trash2, Save, X, Mail, Plus, Upload
+  Package, Search, Edit2, Trash2, Save, X, Mail, Plus, Upload, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getTechStacks, updateTechStack, deleteTechStack, addTechStack } from "@/lib/storage";
+import { useTechStacks, useUserSettings } from "@/hooks/useSupabaseData";
+import { useAuth } from "@/contexts/AuthContext";
 import { TechStack as TechStackType } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import TechStackUploadModal from "@/components/modals/TechStackUploadModal";
@@ -25,20 +26,21 @@ import {
 
 const TechStack = () => {
   const { toast } = useToast();
-  const [techStacks, setTechStacks] = useState<TechStackType[]>([]);
+  const { user } = useAuth();
+  const { settings } = useUserSettings();
+  const { 
+    techStacks, 
+    isLoading, 
+    addTechStack, 
+    updateTechStack, 
+    deleteTechStack 
+  } = useTechStacks();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<TechStackType>>({});
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-
-  useEffect(() => {
-    loadTechStacks();
-  }, []);
-
-  const loadTechStacks = () => {
-    setTechStacks(getTechStacks());
-  };
 
   const filteredStacks = techStacks.filter(stack => 
     stack.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -57,7 +59,7 @@ const TechStack = () => {
     });
   };
 
-  const handleSave = (id: string) => {
+  const handleSave = async (id: string) => {
     // Validate before saving
     if (!editData.vendorName?.trim()) {
       toast({
@@ -87,36 +89,44 @@ const TechStack = () => {
       });
       return;
     }
-    
-    // Email validation
-    if (editData.emailId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.emailId)) {
+
+    try {
+      await updateTechStack(id, {
+        vendor: editData.vendorName,
+        product_name: editData.productName,
+        version: editData.productVersion
+      });
+      
+      setEditingId(null);
+      setEditData({});
+      
       toast({
-        title: "Validation Error",
-        description: "Invalid email format",
+        title: "Updated successfully",
+        description: "The product information has been updated.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update",
         variant: "destructive"
       });
-      return;
     }
-    
-    updateTechStack(id, editData);
-    loadTechStacks();
-    setEditingId(null);
-    setEditData({});
-    
-    toast({
-      title: "Updated successfully",
-      description: "The product information has been updated.",
-    });
   };
 
-  const handleDelete = (id: string) => {
-    deleteTechStack(id);
-    loadTechStacks();
-    
-    toast({
-      title: "Deleted",
-      description: "The product has been removed from tech stack.",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTechStack(id);
+      toast({
+        title: "Deleted",
+        description: "The product has been removed from tech stack.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -124,21 +134,40 @@ const TechStack = () => {
     setEditData({});
   };
 
-  const handleManualAdd = (data: { organization: string; vendorName: string; productName: string; productVersion: string; emailId: string }) => {
-    addTechStack({
-      organization: data.organization,
-      vendorName: data.vendorName,
-      productName: data.productName,
-      productVersion: data.productVersion,
-      emailId: data.emailId,
-      srNo: techStacks.length + 1
-    });
-    loadTechStacks();
-    toast({
-      title: "Product added",
-      description: "The product has been added to your tech stack.",
-    });
+  const handleManualAdd = async (data: { organization: string; vendorName: string; productName: string; productVersion: string; emailId: string }) => {
+    if (!user?.email) return;
+
+    try {
+      await addTechStack({
+        vendor: data.vendorName,
+        product_name: data.productName,
+        version: data.productVersion,
+        org_name: settings?.org_name || data.organization,
+        email_id: user.email
+      });
+      
+      toast({
+        title: "Product added",
+        description: "The product has been added to your tech stack.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to add product",
+        variant: "destructive"
+      });
+    }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -146,7 +175,7 @@ const TechStack = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-navy">Tech Stack</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground">Tech Stack</h1>
             <p className="text-muted-foreground">
               {techStacks.length} products in your tech stack
             </p>
@@ -209,7 +238,7 @@ const TechStack = () => {
                   <tr key={stack.id} className="hover:bg-muted/30 transition-colors">
                     {/* Organization - Not editable */}
                     <td className="px-6 py-4">
-                      <span className="font-medium text-navy">{stack.organization || '-'}</span>
+                      <span className="font-medium text-foreground">{stack.organization || '-'}</span>
                     </td>
                     
                     {/* Vendor - Editable */}
@@ -260,19 +289,10 @@ const TechStack = () => {
                     
                     {/* Email */}
                     <td className="px-6 py-4">
-                      {editingId === stack.id ? (
-                        <Input
-                          type="email"
-                          value={editData.emailId || ''}
-                          onChange={(e) => setEditData(prev => ({ ...prev, emailId: e.target.value }))}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Mail className="h-4 w-4" />
-                          {stack.emailId}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="h-4 w-4" />
+                        {stack.emailId}
+                      </div>
                     </td>
                     
                     {/* Actions */}
@@ -368,10 +388,7 @@ const TechStack = () => {
 
       <TechStackUploadModal 
         isOpen={isUploadModalOpen} 
-        onClose={() => {
-          setIsUploadModalOpen(false);
-          loadTechStacks();
-        }} 
+        onClose={() => setIsUploadModalOpen(false)} 
       />
 
       <ManualTechStackModal

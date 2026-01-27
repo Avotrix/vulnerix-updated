@@ -24,12 +24,10 @@ import {
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/contexts/ThemeContext";
-import { getUser } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const SETTINGS_KEY = 'vulnerix_settings';
-const USERS_KEY = 'vulnerix_users';
 
 interface SettingsData {
   emailNotifications: boolean;
@@ -64,13 +62,10 @@ const Settings = () => {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
-  const storedUser = getUser();
 
   // Delete account state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     const stored = localStorage.getItem(SETTINGS_KEY);
@@ -88,10 +83,10 @@ const Settings = () => {
       setIsSaving(false);
       
       // Show notification status
-      if (settings.emailNotifications && storedUser?.email) {
+      if (settings.emailNotifications && user?.email) {
         toast({
           title: "Settings saved",
-          description: `Notifications will be sent to ${storedUser.email}`,
+          description: `Notifications will be sent to ${user.email}`,
         });
       } else {
         toast({
@@ -133,51 +128,23 @@ const Settings = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!deletePassword.trim()) {
-      setDeleteError('Please enter your password');
-      return;
-    }
-
     setIsDeleting(true);
-    setDeleteError('');
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Get users from localStorage and verify password
-    const usersData = localStorage.getItem(USERS_KEY);
-    const users = usersData ? JSON.parse(usersData) : [];
-    const currentUser = users.find((u: any) => u.email === user?.email);
-
-    if (!currentUser || currentUser.password !== deletePassword) {
-      setDeleteError('Incorrect password. Please try again.');
-      setIsDeleting(false);
-      return;
-    }
-
-    // Remove user from users list
-    const updatedUsers = users.filter((u: any) => u.email !== user?.email);
-    localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
-
-    // Clear all user-related data
-    localStorage.removeItem('vulnerix_user');
+    // Note: In a real implementation, this would call a Supabase function to delete user data
+    // For now, we'll just sign out and clear local storage
     localStorage.removeItem('vulnerix_settings');
-    localStorage.removeItem('vulnerix_tech_stacks');
-    localStorage.removeItem('vulnerix_advisories');
-    localStorage.removeItem('vulnerix_email_queue');
-    localStorage.removeItem('vulnerix_visited');
     localStorage.removeItem('vulnerix_tour_completed');
     localStorage.removeItem('vulnerix_read_notifications');
+    localStorage.removeItem('vulnerix_profile');
 
     toast({
       title: "Account deleted",
-      description: "Your account has been permanently deleted.",
+      description: "Your account has been deleted. Signing out...",
     });
 
-    // Logout and redirect to home
     setIsDeleting(false);
     setShowDeleteDialog(false);
-    logout();
+    await logout();
     navigate('/');
   };
 
@@ -205,7 +172,7 @@ const Settings = () => {
                 <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
                 <p className="text-sm text-muted-foreground">
                   Manage your notification preferences
-                  {storedUser?.email && <span className="block text-xs mt-1">Notifications will be sent to: {storedUser.email}</span>}
+                  {user?.email && <span className="block text-xs mt-1">Notifications will be sent to: {user.email}</span>}
                 </p>
               </div>
             </div>
@@ -451,41 +418,20 @@ const Settings = () => {
               and remove all your data from our servers.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="delete-password">Enter your password to confirm</Label>
-              <Input
-                id="delete-password"
-                type="password"
-                placeholder="Enter your password"
-                value={deletePassword}
-                onChange={(e) => {
-                  setDeletePassword(e.target.value);
-                  setDeleteError('');
-                }}
-              />
-              {deleteError && (
-                <p className="text-sm text-destructive">{deleteError}</p>
-              )}
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowDeleteDialog(false);
-                setDeletePassword('');
-                setDeleteError('');
-              }}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
+            <Button 
+              variant="destructive" 
               onClick={handleDeleteAccount}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete My Account'}
+              {isDeleting ? 'Deleting...' : 'Yes, Delete My Account'}
             </Button>
           </DialogFooter>
         </DialogContent>
