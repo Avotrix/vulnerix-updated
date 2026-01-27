@@ -1,17 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Lock, Mail, Shield, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useToast } from "@/hooks/use-toast";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { adminLogin } = useAdmin();
+  const { login, isAuthenticated } = useAuth();
+  const { isAdminAuthenticated, isAdminLoading, checkAdminStatus } = useAdmin();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -20,14 +22,35 @@ const AdminLogin = () => {
     password: ''
   });
 
+  // If already authenticated as admin, redirect to panel
+  useEffect(() => {
+    if (isAuthenticated && isAdminAuthenticated && !isAdminLoading) {
+      navigate('/admin/panel');
+    }
+  }, [isAuthenticated, isAdminAuthenticated, isAdminLoading, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await adminLogin(formData.email, formData.password);
+      // First, authenticate with Supabase Auth
+      const { error: loginError } = await login(formData.email, formData.password);
       
-      if (success) {
+      if (loginError) {
+        toast({
+          title: "Authentication Failed",
+          description: loginError || "Invalid credentials.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Then check if user has admin role in database
+      const isAdmin = await checkAdminStatus();
+      
+      if (isAdmin) {
         toast({
           title: "Admin Access Granted",
           description: "Welcome to the Admin Control Panel.",
@@ -36,7 +59,7 @@ const AdminLogin = () => {
       } else {
         toast({
           title: "Access Denied",
-          description: "Invalid admin credentials.",
+          description: "You do not have admin privileges.",
           variant: "destructive"
         });
       }
@@ -85,7 +108,7 @@ const AdminLogin = () => {
                 <Input
                   id="admin-email"
                   type="email"
-                  placeholder="admin@vulnerix.com"
+                  placeholder="admin@company.com"
                   className="pl-10"
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
@@ -95,7 +118,7 @@ const AdminLogin = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="admin-password" className="text-foreground">Admin Password</Label>
+              <Label htmlFor="admin-password" className="text-foreground">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -127,7 +150,7 @@ const AdminLogin = () => {
               <div>
                 <p className="text-xs text-muted-foreground">
                   This area is restricted to authorized administrators only. 
-                  All access attempts are logged and monitored.
+                  Admin access is verified server-side through role-based access control.
                 </p>
               </div>
             </div>

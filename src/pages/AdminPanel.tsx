@@ -1,625 +1,388 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  Database, Home, Layout, Palette, LayoutDashboard, 
-  FileText, Bell, ClipboardList, LogOut, Shield,
-  Eye, EyeOff, Download, ChevronDown, ChevronRight
-} from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Shield, LogOut, Database, Activity, ChevronDown, ChevronRight } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdmin } from "@/contexts/AdminContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
-// Database schema definitions
+interface AuditLog {
+  id: string;
+  admin_id: string;
+  page_affected: string;
+  action_performed: string;
+  previous_value: string | null;
+  new_value: string | null;
+  created_at: string;
+}
+
+// Database schema definitions for display
 const databaseSchemas = {
   userAccess: {
-    name: 'userAccess',
-    description: 'User authentication and access credentials',
+    name: 'user_access',
+    description: 'User authentication and access records',
     columns: [
-      { name: 'userID', type: 'UUID', constraint: 'PRIMARY KEY', description: 'Unique user identifier' },
-      { name: 'userEmailID', type: 'VARCHAR(255)', constraint: 'UNIQUE, NOT NULL', description: 'User email address' },
-      { name: 'pass', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Hashed password (not visible to admin)' }
+      { name: 'user_id', type: 'UUID', constraint: 'PRIMARY KEY', description: 'Unique user identifier' },
+      { name: 'user_email_id', type: 'TEXT', constraint: 'UNIQUE, NOT NULL', description: 'User email address' },
+      { name: 'created_at', type: 'TIMESTAMPTZ', constraint: 'DEFAULT NOW()', description: 'Account creation timestamp' }
     ]
   },
   userSettings: {
-    name: 'userSettings',
+    name: 'user_settings',
     description: 'User preferences and notification settings',
     columns: [
-      { name: 'orgName', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Organization name' },
-      { name: 'emailID', type: 'VARCHAR(255)', constraint: 'FOREIGN KEY', description: 'Reference to userAccess.userEmailID' },
-      { name: 'notificationLevel', type: 'ENUM', constraint: 'DEFAULT "all"', description: 'Notification severity filter' }
+      { name: 'id', type: 'UUID', constraint: 'PRIMARY KEY', description: 'Settings record ID' },
+      { name: 'org_name', type: 'TEXT', constraint: 'NOT NULL', description: 'Organization name' },
+      { name: 'email_id', type: 'TEXT', constraint: 'NOT NULL', description: 'User email' },
+      { name: 'notification_level', type: 'TEXT', constraint: 'DEFAULT "all"', description: 'Notification preference' }
     ]
   },
   techStack: {
-    name: 'techStack',
+    name: 'tech_stack',
     description: 'User-uploaded technology stack inventory',
     columns: [
-      { name: 'vendor', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Software vendor name' },
-      { name: 'productName', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Product or software name' },
-      { name: 'version', type: 'VARCHAR(100)', constraint: 'NOT NULL', description: 'Product version' },
-      { name: 'orgName', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Organization name (partition key)' },
-      { name: 'emailID', type: 'VARCHAR(255)', constraint: 'FOREIGN KEY', description: 'User email (partition key)' }
+      { name: 'id', type: 'UUID', constraint: 'PRIMARY KEY', description: 'Record ID' },
+      { name: 'vendor', type: 'TEXT', constraint: 'NOT NULL', description: 'Software vendor name' },
+      { name: 'product_name', type: 'TEXT', constraint: 'NOT NULL', description: 'Product or software name' },
+      { name: 'version', type: 'TEXT', constraint: 'NULLABLE', description: 'Product version' },
+      { name: 'org_name', type: 'TEXT', constraint: 'NOT NULL', description: 'Organization name' },
+      { name: 'email_id', type: 'TEXT', constraint: 'NOT NULL', description: 'User email' }
     ]
   },
   techStackResults: {
-    name: 'techStackResults',
-    description: 'CVE and CERT-IN matching results for tech stack',
+    name: 'tech_stack_results',
+    description: 'CVE and CERT-IN matching results',
     columns: [
-      { name: 'vendor', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Matched vendor name' },
-      { name: 'productName', type: 'VARCHAR(255)', constraint: 'NOT NULL', description: 'Matched product name' },
-      { name: 'version', type: 'VARCHAR(100)', constraint: 'NOT NULL', description: 'Matched version' },
-      { name: 'orgName', type: 'VARCHAR(255)', constraint: 'PARTITION KEY', description: 'Organization partition' },
-      { name: 'emailID', type: 'VARCHAR(255)', constraint: 'PARTITION KEY', description: 'User email partition' },
-      { name: 'CVEMatch', type: 'VARCHAR(50)', constraint: 'NULL', description: 'Matched CVE identifier' },
-      { name: 'severityCVE', type: 'ENUM', constraint: 'NULL', description: 'CVE severity level' },
-      { name: 'CERTIN', type: 'VARCHAR(50)', constraint: 'NULL', description: 'Matched CERT-IN advisory' },
-      { name: 'severityCERTIN', type: 'ENUM', constraint: 'NULL', description: 'CERT-IN severity level' }
+      { name: 'id', type: 'UUID', constraint: 'PRIMARY KEY', description: 'Record ID' },
+      { name: 'vendor', type: 'TEXT', constraint: 'NOT NULL', description: 'Matched vendor' },
+      { name: 'product_name', type: 'TEXT', constraint: 'NOT NULL', description: 'Matched product' },
+      { name: 'cve_match', type: 'TEXT', constraint: 'NULLABLE', description: 'CVE identifier' },
+      { name: 'severity_cve', type: 'TEXT', constraint: 'NULLABLE', description: 'CVE severity' },
+      { name: 'cert_in', type: 'TEXT', constraint: 'NULLABLE', description: 'CERT-IN advisory' },
+      { name: 'severity_cert_in', type: 'TEXT', constraint: 'NULLABLE', description: 'CERT-IN severity' }
+    ]
+  },
+  userRoles: {
+    name: 'user_roles',
+    description: 'Role-based access control',
+    columns: [
+      { name: 'id', type: 'UUID', constraint: 'PRIMARY KEY', description: 'Role record ID' },
+      { name: 'user_id', type: 'UUID', constraint: 'NOT NULL', description: 'User ID reference' },
+      { name: 'role', type: 'app_role', constraint: 'NOT NULL', description: 'Role: admin or user' }
     ]
   }
 };
 
 const AdminPanel = () => {
   const navigate = useNavigate();
+  const { isAdminAuthenticated, isAdminLoading } = useAdmin();
+  const { logout, user } = useAuth();
   const { toast } = useToast();
-  const { adminLogout, settings, updateSettings, auditLogs, addAuditLog } = useAdmin();
-  const [activeTab, setActiveTab] = useState('schema');
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'schema' | 'audit'>('schema');
 
-  // Local state for form edits
-  const [homeContent, setHomeContent] = useState(settings.homePageContent);
-  const [notificationSettings, setNotificationSettings] = useState(settings.notificationSettings);
-  const [themeSettings, setThemeSettings] = useState({
-    defaultDarkMode: settings.defaultDarkMode,
-    buttonRadius: settings.buttonRadius,
-    fontSizeScale: settings.fontSizeScale,
-    cardShadowIntensity: settings.cardShadowIntensity
-  });
-  const [dashboardSettings, setDashboardSettings] = useState({
-    visibleKPIs: settings.visibleKPIs,
-    certInVisible: settings.certInVisible,
-    nestedTilesEnabled: settings.nestedTilesEnabled
-  });
+  // Redirect if not admin
+  useEffect(() => {
+    if (!isAdminLoading && !isAdminAuthenticated) {
+      toast({
+        title: "Access Denied",
+        description: "You must be an admin to access this page.",
+        variant: "destructive"
+      });
+      navigate('/admin');
+    }
+  }, [isAdminAuthenticated, isAdminLoading, navigate, toast]);
 
-  const handleLogout = () => {
-    adminLogout();
+  // Fetch audit logs from database
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      if (!isAdminAuthenticated) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('admin_audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (error) {
+          console.error('Error fetching audit logs:', error);
+        } else {
+          setAuditLogs(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch audit logs:', err);
+      } finally {
+        setIsLoadingLogs(false);
+      }
+    };
+
+    fetchAuditLogs();
+  }, [isAdminAuthenticated]);
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
-    toast({
-      title: "Logged Out",
-      description: "Admin session ended.",
-    });
   };
 
-  const handleSaveHomeContent = () => {
-    updateSettings({ homePageContent: homeContent });
-    addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Home Page',
-      actionPerformed: 'Update Content',
-      previousValue: JSON.stringify(settings.homePageContent),
-      newValue: JSON.stringify(homeContent)
-    });
-    toast({ title: "Saved", description: "Home page content updated." });
-  };
+  if (isAdminLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
 
-  const handleSaveTheme = () => {
-    updateSettings(themeSettings);
-    addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Theme Settings',
-      actionPerformed: 'Update Theme',
-      previousValue: JSON.stringify({
-        defaultDarkMode: settings.defaultDarkMode,
-        buttonRadius: settings.buttonRadius
-      }),
-      newValue: JSON.stringify(themeSettings)
-    });
-    toast({ title: "Saved", description: "Theme settings updated." });
-  };
-
-  const handleSaveDashboard = () => {
-    updateSettings(dashboardSettings);
-    addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Dashboard',
-      actionPerformed: 'Update Display Config',
-      previousValue: JSON.stringify({
-        visibleKPIs: settings.visibleKPIs,
-        certInVisible: settings.certInVisible
-      }),
-      newValue: JSON.stringify(dashboardSettings)
-    });
-    toast({ title: "Saved", description: "Dashboard settings updated." });
-  };
-
-  const handleSaveNotifications = () => {
-    updateSettings({ notificationSettings });
-    addAuditLog({
-      adminId: 'admin-001',
-      pageAffected: 'Notifications',
-      actionPerformed: 'Update Settings',
-      previousValue: JSON.stringify(settings.notificationSettings),
-      newValue: JSON.stringify(notificationSettings)
-    });
-    toast({ title: "Saved", description: "Notification settings updated." });
-  };
-
-  const exportAuditLogs = () => {
-    const csvContent = [
-      ['ID', 'Admin ID', 'Timestamp', 'Page', 'Action', 'Previous Value', 'New Value'],
-      ...auditLogs.map(log => [
-        log.id,
-        log.adminId,
-        new Date(log.timestamp).toISOString(),
-        log.pageAffected,
-        log.actionPerformed,
-        log.previousValue,
-        log.newValue
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  };
-
-  const sidebarItems = [
-    { id: 'schema', label: 'Database Schema', icon: Database },
-    { id: 'home', label: 'Home Page Editor', icon: Home },
-    { id: 'pages', label: 'Page Structure', icon: Layout },
-    { id: 'theme', label: 'Theme & UI', icon: Palette },
-    { id: 'dashboard', label: 'Dashboard Config', icon: LayoutDashboard },
-    { id: 'content', label: 'Content (CMS)', icon: FileText },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'audit', label: 'Audit Logs', icon: ClipboardList },
-  ];
+  if (!isAdminAuthenticated) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card">
-        <div className="p-4 border-b border-border">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-destructive" />
-            </div>
+            <img src={vulnerixLogo} alt="Vulnerix" className="h-8 w-8" />
             <div>
-              <h2 className="font-display font-bold text-foreground">Admin Panel</h2>
-              <p className="text-xs text-muted-foreground">Vulnerix Control</p>
+              <h1 className="text-lg font-display font-bold text-foreground">Admin Panel</h1>
+              <p className="text-xs text-muted-foreground">Server-Verified RBAC Access</p>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-accent" />
+              <span className="text-sm text-accent font-medium">Admin</span>
+            </div>
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card rounded-xl border border-border p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-accent" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">Admin Status</h2>
+            </div>
+            <p className="text-2xl font-bold text-accent">Verified</p>
+            <p className="text-sm text-muted-foreground">Server-side RBAC</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-card rounded-xl border border-border p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Database className="h-5 w-5 text-accent" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">Database</h2>
+            </div>
+            <p className="text-2xl font-bold text-accent">Connected</p>
+            <p className="text-sm text-muted-foreground">Supabase Cloud</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-card rounded-xl border border-border p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-accent" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">Audit Logs</h2>
+            </div>
+            <p className="text-2xl font-bold text-accent">{auditLogs.length}</p>
+            <p className="text-sm text-muted-foreground">Read-only records</p>
+          </motion.div>
         </div>
 
-        <nav className="p-2">
-          {sidebarItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === item.id 
-                  ? 'bg-destructive/10 text-destructive' 
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-4 left-4 right-4 w-56">
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6">
           <Button 
-            variant="ghost" 
-            className="w-full justify-start text-muted-foreground hover:text-destructive"
-            onClick={handleLogout}
+            variant={activeTab === 'schema' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('schema')}
           >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
+            <Database className="h-4 w-4 mr-2" />
+            Database Schema
           </Button>
-          <Link to="/">
-            <Button variant="ghost" className="w-full justify-start text-muted-foreground mt-1">
-              <Home className="h-4 w-4 mr-2" />
-              Back to Site
-            </Button>
+          <Button 
+            variant={activeTab === 'audit' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('audit')}
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            Audit Logs
+          </Button>
+        </div>
+
+        {/* Schema Viewer */}
+        {activeTab === 'schema' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-foreground">Database Schema Viewer</h2>
+              <p className="text-sm text-muted-foreground">Read-only view of database structure</p>
+            </div>
+
+            {Object.entries(databaseSchemas).map(([key, table]) => (
+              <Card key={key} className="border-border">
+                <CardHeader 
+                  className="cursor-pointer"
+                  onClick={() => setExpandedTable(expandedTable === key ? null : key)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Database className="h-5 w-5 text-accent" />
+                      <div>
+                        <CardTitle className="text-lg">{table.name}</CardTitle>
+                        <CardDescription>{table.description}</CardDescription>
+                      </div>
+                    </div>
+                    {expandedTable === key ? (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                </CardHeader>
+                
+                {expandedTable === key && (
+                  <CardContent>
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="text-left p-3 font-medium text-foreground">Column</th>
+                            <th className="text-left p-3 font-medium text-foreground">Type</th>
+                            <th className="text-left p-3 font-medium text-foreground">Constraint</th>
+                            <th className="text-left p-3 font-medium text-foreground">Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {table.columns.map((col, i) => (
+                            <tr key={col.name} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
+                              <td className="p-3 font-mono text-accent">{col.name}</td>
+                              <td className="p-3 text-muted-foreground">{col.type}</td>
+                              <td className="p-3 text-muted-foreground">{col.constraint}</td>
+                              <td className="p-3 text-foreground">{col.description}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
+          </motion.div>
+        )}
+
+        {/* Audit Logs */}
+        {activeTab === 'audit' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card rounded-xl border border-border overflow-hidden"
+          >
+            <div className="p-6 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">Audit Log</h2>
+              <p className="text-sm text-muted-foreground">Immutable, read-only record of admin actions</p>
+            </div>
+
+            {isLoadingLogs ? (
+              <div className="p-6 text-center text-muted-foreground">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent mx-auto mb-2"></div>
+                Loading audit logs...
+              </div>
+            ) : auditLogs.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground">
+                No audit logs recorded yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/30">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Timestamp
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Page
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Action
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Previous
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        New
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {auditLogs.map((log) => (
+                      <tr key={log.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {new Date(log.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {log.page_affected}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                          {log.action_performed}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground max-w-[200px] truncate">
+                          {log.previous_value || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground max-w-[200px] truncate">
+                          {log.new_value || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Back to Dashboard */}
+        <div className="mt-6 text-center">
+          <Link 
+            to="/dashboard" 
+            className="text-sm text-accent hover:underline"
+          >
+            ← Back to Dashboard
           </Link>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-auto">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Database Schema Viewer */}
-          {activeTab === 'schema' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Database Schema</h1>
-              <p className="text-muted-foreground mb-6">View-only access to database table structures.</p>
-
-              <div className="space-y-4">
-                {Object.entries(databaseSchemas).map(([key, table]) => (
-                  <Card key={key} className="border-border">
-                    <CardHeader 
-                      className="cursor-pointer"
-                      onClick={() => setExpandedTable(expandedTable === key ? null : key)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Database className="h-5 w-5 text-accent" />
-                          <div>
-                            <CardTitle className="text-lg">{table.name}</CardTitle>
-                            <CardDescription>{table.description}</CardDescription>
-                          </div>
-                        </div>
-                        {expandedTable === key ? (
-                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </CardHeader>
-                    
-                    {expandedTable === key && (
-                      <CardContent>
-                        <div className="border border-border rounded-lg overflow-hidden">
-                          <table className="w-full text-sm">
-                            <thead className="bg-muted">
-                              <tr>
-                                <th className="text-left p-3 font-medium text-foreground">Column</th>
-                                <th className="text-left p-3 font-medium text-foreground">Type</th>
-                                <th className="text-left p-3 font-medium text-foreground">Constraint</th>
-                                <th className="text-left p-3 font-medium text-foreground">Description</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {table.columns.map((col, i) => (
-                                <tr key={col.name} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
-                                  <td className="p-3 font-mono text-accent">{col.name}</td>
-                                  <td className="p-3 text-muted-foreground">{col.type}</td>
-                                  <td className="p-3 text-muted-foreground">{col.constraint}</td>
-                                  <td className="p-3 text-foreground">{col.description}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Home Page Editor */}
-          {activeTab === 'home' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Home Page Editor</h1>
-              <p className="text-muted-foreground mb-6">Edit static content on the home page.</p>
-
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Hero Section</CardTitle>
-                  <CardDescription>Main headline and subtext</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Hero Title</Label>
-                    <Input 
-                      value={homeContent.heroText}
-                      onChange={(e) => setHomeContent(prev => ({ ...prev, heroText: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Hero Subtitle</Label>
-                    <Input 
-                      value={homeContent.heroSubtext}
-                      onChange={(e) => setHomeContent(prev => ({ ...prev, heroSubtext: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Footer Text</Label>
-                    <Input 
-                      value={homeContent.footerText}
-                      onChange={(e) => setHomeContent(prev => ({ ...prev, footerText: e.target.value }))}
-                    />
-                  </div>
-                  <Button onClick={handleSaveHomeContent}>Save Changes</Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Page Structure Editor */}
-          {activeTab === 'pages' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Page Structure</h1>
-              <p className="text-muted-foreground mb-6">Control section visibility across pages.</p>
-
-              <div className="grid gap-4">
-                {['Home', 'Dashboard', 'Advisories', 'Tech Stack', 'Contact'].map((page) => (
-                  <Card key={page} className="border-border">
-                    <CardHeader>
-                      <CardTitle>{page}</CardTitle>
-                      <CardDescription>Toggle sections on/off</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-4">
-                        {['Header', 'Main Content', 'Sidebar', 'Footer'].map((section) => (
-                          <div key={section} className="flex items-center gap-2">
-                            <Switch defaultChecked id={`${page}-${section}`} />
-                            <Label htmlFor={`${page}-${section}`} className="text-foreground">{section}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Theme & UI Control */}
-          {activeTab === 'theme' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Theme & UI Control</h1>
-              <p className="text-muted-foreground mb-6">Adjust visual settings within safe boundaries.</p>
-
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Visual Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-foreground">Default Dark Mode</Label>
-                      <p className="text-sm text-muted-foreground">Enable dark mode by default for new users</p>
-                    </div>
-                    <Switch 
-                      checked={themeSettings.defaultDarkMode}
-                      onCheckedChange={(checked) => setThemeSettings(prev => ({ ...prev, defaultDarkMode: checked }))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Button Border Radius: {themeSettings.buttonRadius}px</Label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="24"
-                      value={themeSettings.buttonRadius}
-                      onChange={(e) => setThemeSettings(prev => ({ ...prev, buttonRadius: parseInt(e.target.value) }))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Font Size Scale: {themeSettings.fontSizeScale}x</Label>
-                    <input
-                      type="range"
-                      min="0.8"
-                      max="1.2"
-                      step="0.05"
-                      value={themeSettings.fontSizeScale}
-                      onChange={(e) => setThemeSettings(prev => ({ ...prev, fontSizeScale: parseFloat(e.target.value) }))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Card Shadow Intensity: {themeSettings.cardShadowIntensity}x</Label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      value={themeSettings.cardShadowIntensity}
-                      onChange={(e) => setThemeSettings(prev => ({ ...prev, cardShadowIntensity: parseFloat(e.target.value) }))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <Button onClick={handleSaveTheme}>Save Theme Settings</Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Dashboard Display Config */}
-          {activeTab === 'dashboard' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Dashboard Configuration</h1>
-              <p className="text-muted-foreground mb-6">Control KPI visibility and display options.</p>
-
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>KPI Display Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-4">
-                    {[
-                      { id: 'totalProducts', label: 'Total Products' },
-                      { id: 'totalAdvisories', label: 'Total Advisories' },
-                      { id: 'criticalRisk', label: 'Critical Risk' },
-                      { id: 'overallRisk', label: 'Overall Risk Level' }
-                    ].map((kpi) => (
-                      <div key={kpi.id} className="flex items-center justify-between">
-                        <Label className="text-foreground">{kpi.label}</Label>
-                        <Switch 
-                          checked={dashboardSettings.visibleKPIs.includes(kpi.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setDashboardSettings(prev => ({
-                                ...prev,
-                                visibleKPIs: [...prev.visibleKPIs, kpi.id]
-                              }));
-                            } else {
-                              setDashboardSettings(prev => ({
-                                ...prev,
-                                visibleKPIs: prev.visibleKPIs.filter(id => id !== kpi.id)
-                              }));
-                            }
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-t border-border pt-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <Label className="text-foreground">CERT-IN Visibility</Label>
-                        <p className="text-sm text-muted-foreground">Show CERT-IN data in dashboard</p>
-                      </div>
-                      <Switch 
-                        checked={dashboardSettings.certInVisible}
-                        onCheckedChange={(checked) => setDashboardSettings(prev => ({ ...prev, certInVisible: checked }))}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-foreground">Nested Tiles</Label>
-                        <p className="text-sm text-muted-foreground">Show nested CVE/CERT-IN tiles when enabled</p>
-                      </div>
-                      <Switch 
-                        checked={dashboardSettings.nestedTilesEnabled}
-                        onCheckedChange={(checked) => setDashboardSettings(prev => ({ ...prev, nestedTilesEnabled: checked }))}
-                      />
-                    </div>
-                  </div>
-
-                  <Button onClick={handleSaveDashboard}>Save Dashboard Settings</Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Content Management */}
-          {activeTab === 'content' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Content Management</h1>
-              <p className="text-muted-foreground mb-6">Manage announcements and notices.</p>
-
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Announcements</CardTitle>
-                  <CardDescription>Create and manage site-wide announcements</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 border border-dashed border-border rounded-lg text-center text-muted-foreground">
-                      <FileText className="h-8 w-8 mx-auto mb-2" />
-                      <p>No active announcements</p>
-                      <Button variant="outline" size="sm" className="mt-2">Add Announcement</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Notification Settings */}
-          {activeTab === 'notifications' && (
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground mb-2">Notification Settings</h1>
-              <p className="text-muted-foreground mb-6">Configure email notifications and templates.</p>
-
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Email Configuration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Company Mail ID</Label>
-                    <Input 
-                      value={notificationSettings.companyMailId}
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, companyMailId: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Footer Disclaimer</Label>
-                    <Input 
-                      value={notificationSettings.footerDisclaimer}
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, footerDisclaimer: e.target.value }))}
-                    />
-                  </div>
-
-                  <Button onClick={handleSaveNotifications}>Save Notification Settings</Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Audit Logs */}
-          {activeTab === 'audit' && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-display font-bold text-foreground">Audit Logs</h1>
-                  <p className="text-muted-foreground">All admin actions are logged here.</p>
-                </div>
-                <Button variant="outline" onClick={exportAuditLogs}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </Button>
-              </div>
-
-              <Card className="border-border">
-                <CardContent className="p-0">
-                  <div className="max-h-[600px] overflow-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted sticky top-0">
-                        <tr>
-                          <th className="text-left p-3 font-medium text-foreground">Timestamp</th>
-                          <th className="text-left p-3 font-medium text-foreground">Admin</th>
-                          <th className="text-left p-3 font-medium text-foreground">Page</th>
-                          <th className="text-left p-3 font-medium text-foreground">Action</th>
-                          <th className="text-left p-3 font-medium text-foreground">Details</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {auditLogs.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                              No audit logs yet. Actions will be recorded here.
-                            </td>
-                          </tr>
-                        ) : (
-                          auditLogs.map((log, i) => (
-                            <tr key={log.id} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
-                              <td className="p-3 text-muted-foreground">
-                                {new Date(log.timestamp).toLocaleString()}
-                              </td>
-                              <td className="p-3 text-foreground">{log.adminId}</td>
-                              <td className="p-3 text-foreground">{log.pageAffected}</td>
-                              <td className="p-3 text-foreground">{log.actionPerformed}</td>
-                              <td className="p-3 text-muted-foreground text-xs max-w-xs truncate">
-                                {log.previousValue} → {log.newValue}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </motion.div>
       </main>
     </div>
   );
