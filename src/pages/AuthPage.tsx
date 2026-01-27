@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, Building2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 import ForgotPasswordModal from "@/components/modals/ForgotPasswordModal";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
+import { validatePassword, PasswordRuleStatus } from "@/utils/passwordValidator";
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
@@ -27,6 +29,33 @@ const AuthPage = () => {
     name: '',
     organization: ''
   });
+
+  // Password validation for signup (defense-in-depth)
+  const passwordValidation = useMemo(() => {
+    if (isLogin || !formData.password) {
+      return {
+        valid: true,
+        errors: [],
+        rules: {
+          minLength: false,
+          hasUppercase: false,
+          hasLowercase: false,
+          hasNumber: false,
+          hasSpecialChar: false,
+          notBlocked: true,
+          notContainsUserInfo: true,
+        } as PasswordRuleStatus
+      };
+    }
+    
+    return validatePassword(formData.password, {
+      email: formData.email,
+      name: formData.name,
+      org: formData.organization,
+    });
+  }, [formData.password, formData.email, formData.name, formData.organization, isLogin]);
+
+  const isSignupDisabled = !isLogin && (!passwordValidation.valid || isLoading);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +82,17 @@ const AuthPage = () => {
           toast({
             title: "Missing information",
             description: "Please fill in all fields.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate password before sending to Supabase (defense-in-depth)
+        if (!passwordValidation.valid) {
+          toast({
+            title: "Password does not meet requirements",
+            description: passwordValidation.errors[0],
             variant: "destructive"
           });
           setIsLoading(false);
@@ -188,7 +228,7 @@ const AuthPage = () => {
                     value={formData.password}
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                     required
-                    minLength={6}
+                    minLength={isLogin ? 6 : 12}
                   />
                   <button
                     type="button"
@@ -198,6 +238,13 @@ const AuthPage = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                
+                {/* Password strength indicator for signup */}
+                {!isLogin && formData.password && (
+                  <div className="mt-3">
+                    <PasswordStrengthIndicator rules={passwordValidation.rules} />
+                  </div>
+                )}
               </div>
 
               {isLogin && (
@@ -217,7 +264,7 @@ const AuthPage = () => {
                 variant="navy" 
                 size="lg" 
                 className="w-full"
-                disabled={isLoading}
+                disabled={isLogin ? isLoading : isSignupDisabled}
               >
                 {isLoading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
               </Button>
