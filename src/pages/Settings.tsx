@@ -4,7 +4,6 @@ import { Bell, Sun, Moon, Save, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -26,8 +25,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
-const SETTINGS_KEY = 'vulnerix_settings';
+// UI-only settings stored in localStorage (non-sensitive)
+const THEME_KEY = 'vulnerix_theme';
 
 interface SettingsData {
   emailNotifications: boolean;
@@ -36,7 +37,6 @@ interface SettingsData {
   theme: 'light' | 'dark' | 'system';
   autoRefresh: boolean;
   refreshInterval: string;
-  // Multi-select notification preferences
   notificationSeverities: string[];
   notificationSources: string[];
 }
@@ -61,6 +61,7 @@ const Settings = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
 
   // Delete account state
@@ -68,33 +69,115 @@ const Settings = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(SETTINGS_KEY);
-    if (stored) {
-      const parsedSettings = JSON.parse(stored);
-      // Merge with defaults to handle new fields
-      setSettings({ ...defaultSettings, ...parsedSettings });
-    }
-  }, []);
-
-  const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      setIsSaving(false);
-      
-      // Show notification status
-      if (settings.emailNotifications && user?.email) {
-        toast({
-          title: "Settings saved",
-          description: `Notifications will be sent to ${user.email}`,
-        });
-      } else {
-        toast({
-          title: "Settings saved",
-          description: "Your preferences have been updated.",
-        });
+    const loadSettings = async () => {
+      if (!user?.email) {
+        setIsLoading(false);
+        return;
       }
-    }, 500);
+
+      try {
+        // Load notification_level from user_settings table
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('notification_level')
+          .eq('email_id', user.email)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading settings:', error);
+        }
+
+        // Parse notification level to derive settings
+        const notificationLevel = data?.notification_level || 'all';
+        
+        // Load theme from localStorage (UI preference only)
+        const storedTheme = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | 'system' | null;
+        
+        setSettings(prev => ({
+          ...prev,
+          theme: storedTheme || 'light',
+          emailNotifications: notificationLevel !== 'none',
+          criticalAlerts: notificationLevel === 'all' || notificationLevel === 'critical',
+        }));
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user?.email) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to save settings.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // Determine notification level based on settings
+      let notificationLevel = 'all';
+      if (!settings.emailNotifications) {
+        notificationLevel = 'none';
+      } else if (settings.criticalAlerts && !settings.weeklyDigest) {
+        notificationLevel = 'critical';
+      }
+
+      // Update user_settings in database
+      const { data: existingSettings } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('email_id', user.email)
+        .maybeSingle();
+
+      if (existingSettings) {
+        // Update existing
+        const { error: updateError } = await supabase
+          .from('user_settings')
+          .update({ notification_level: notificationLevel })
+          .eq('email_id', user.email);
+
+        if (updateError) throw updateError;
+      } else {
+        // Insert new
+        const { error: insertError } = await supabase
+          .from('user_settings')
+          .insert({
+            email_id: user.email,
+            org_name: user.user_metadata?.organization || 'Unknown',
+            notification_level: notificationLevel,
+            user_id: user.id
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      // Save theme to localStorage (UI preference only)
+      localStorage.setItem(THEME_KEY, settings.theme);
+
+      toast({
+        title: "Settings saved",
+        description: settings.emailNotifications && user?.email 
+          ? `Notifications will be sent to ${user.email}`
+          : "Your preferences have been updated.",
+      });
+    } catch (err: any) {
+      console.error('Failed to save settings:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save settings.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateSetting = <K extends keyof SettingsData>(key: K, value: SettingsData[K]) => {
@@ -128,25 +211,48 @@ const Settings = () => {
   };
 
   const handleDeleteAccount = async () => {
+    if (!user) return;
+    
     setIsDeleting(true);
 
-    // Note: In a real implementation, this would call a Supabase function to delete user data
-    // For now, we'll just sign out and clear local storage
-    localStorage.removeItem('vulnerix_settings');
-    localStorage.removeItem('vulnerix_tour_completed');
-    localStorage.removeItem('vulnerix_read_notifications');
-    localStorage.removeItem('vulnerix_profile');
+    try {
+      // Delete user data from database tables
+      await supabase.from('tech_stack').delete().eq('email_id', user.email);
+      await supabase.from('user_settings').delete().eq('email_id', user.email);
+      
+      // Clear UI preferences from localStorage
+      localStorage.removeItem(THEME_KEY);
+      localStorage.removeItem('vulnerix_tour_completed');
 
-    toast({
-      title: "Account deleted",
-      description: "Your account has been deleted. Signing out...",
-    });
+      toast({
+        title: "Account deleted",
+        description: "Your data has been deleted. Signing out...",
+      });
 
-    setIsDeleting(false);
-    setShowDeleteDialog(false);
-    await logout();
-    navigate('/');
+      await logout();
+      navigate('/');
+    } catch (err: any) {
+      console.error('Failed to delete account:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete account.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

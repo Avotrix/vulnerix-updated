@@ -52,11 +52,22 @@ const LandingRoute = () => {
   return <LandingPage />;
 };
 
-// Admin Protected Route
+// Admin Protected Route - Server-side role verification
 const AdminProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAdminAuthenticated } = useAdmin();
+  const { isAdminAuthenticated, isAdminLoading } = useAdmin();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   
-  if (!isAdminAuthenticated) {
+  // Show loading while checking auth and admin status
+  if (authLoading || isAdminLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
+  
+  // Redirect to admin login if not authenticated or not admin
+  if (!isAuthenticated || !isAdminAuthenticated) {
     return <Navigate to="/admin" replace />;
   }
   

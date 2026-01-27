@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-
-const PROFILE_KEY = 'vulnerix_profile';
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileData {
   name: string;
@@ -22,6 +21,7 @@ const Profile = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileData>({
     name: '',
     email: '',
@@ -31,33 +31,121 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    // Load profile from storage or use user data
-    const stored = localStorage.getItem(PROFILE_KEY);
-    if (stored) {
-      setProfile(JSON.parse(stored));
-    } else if (user) {
-      setProfile({
-        name: user.user_metadata?.name || user.email?.split('@')[0] || '',
-        email: user.email || '',
-        organization: user.user_metadata?.organization || '',
-        phone: '',
-        role: ''
-      });
-    }
+    const loadProfile = async () => {
+      if (!user?.email) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Load from user_settings table
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('email_id', user.email)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading profile:', error);
+        }
+
+        // Merge database data with user metadata
+        setProfile({
+          name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+          email: user.email || '',
+          organization: data?.org_name || user.user_metadata?.organization || '',
+          phone: '',
+          role: ''
+        });
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
   }, [user]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user?.email) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to save profile.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSaving(true);
-    // Simulate save
-    setTimeout(() => {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-      setIsSaving(false);
+    
+    try {
+      // Update user metadata in Supabase Auth
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          name: profile.name,
+          full_name: profile.name,
+          organization: profile.organization
+        }
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      // Update user_settings in database
+      const { data: existingSettings } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('email_id', user.email)
+        .maybeSingle();
+
+      if (existingSettings) {
+        // Update existing
+        const { error: updateError } = await supabase
+          .from('user_settings')
+          .update({ org_name: profile.organization })
+          .eq('email_id', user.email);
+
+        if (updateError) throw updateError;
+      } else {
+        // Insert new
+        const { error: insertError } = await supabase
+          .from('user_settings')
+          .insert({
+            email_id: user.email,
+            org_name: profile.organization,
+            user_id: user.id
+          });
+
+        if (insertError) throw insertError;
+      }
+
       toast({
         title: "Profile saved",
         description: "Your profile has been updated successfully.",
       });
-    }, 500);
+    } catch (err: any) {
+      console.error('Failed to save profile:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save profile.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
