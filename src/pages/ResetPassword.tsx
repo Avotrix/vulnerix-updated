@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
+import { validatePassword, PasswordRuleStatus } from "@/utils/passwordValidator";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -30,6 +32,31 @@ const ResetPassword = () => {
     password: '',
     confirmPassword: ''
   });
+
+  // Password validation (defense-in-depth)
+  const passwordValidation = useMemo(() => {
+    if (!formData.password) {
+      return {
+        valid: false,
+        errors: [],
+        rules: {
+          minLength: false,
+          hasUppercase: false,
+          hasLowercase: false,
+          hasNumber: false,
+          hasSpecialChar: false,
+          notBlocked: true,
+          notContainsUserInfo: true,
+        } as PasswordRuleStatus
+      };
+    }
+    
+    return validatePassword(formData.password);
+  }, [formData.password]);
+
+  const isSubmitDisabled = !passwordValidation.valid || 
+                           formData.password !== formData.confirmPassword ||
+                           isLoading;
 
   useEffect(() => {
     // Check if user has a valid recovery session
@@ -71,8 +98,8 @@ const ResetPassword = () => {
     
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!passwordValidation.valid) {
+      newErrors.password = passwordValidation.errors[0] || 'Password does not meet requirements';
     }
     
     if (!formData.confirmPassword) {
@@ -82,7 +109,7 @@ const ResetPassword = () => {
     }
     
     setErrors(newErrors);
-    return !newErrors.password && !newErrors.confirmPassword;
+    return passwordValidation.valid && !newErrors.confirmPassword;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -214,6 +241,7 @@ const ResetPassword = () => {
                 className="pl-10 pr-10"
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                minLength={12}
               />
               <button
                 type="button"
@@ -223,6 +251,14 @@ const ResetPassword = () => {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            
+            {/* Password strength indicator */}
+            {formData.password && (
+              <div className="mt-3">
+                <PasswordStrengthIndicator rules={passwordValidation.rules} />
+              </div>
+            )}
+            
             {errors.password && (
               <p className="text-sm text-destructive">{errors.password}</p>
             )}
@@ -258,7 +294,7 @@ const ResetPassword = () => {
             variant="navy" 
             size="lg" 
             className="w-full"
-            disabled={isLoading}
+            disabled={isSubmitDisabled}
           >
             {isLoading ? 'Resetting Password...' : 'Reset Password'}
           </Button>
