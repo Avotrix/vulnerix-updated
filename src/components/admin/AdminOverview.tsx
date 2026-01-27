@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   Users, Building2, Package, FileText, Shield, AlertTriangle,
-  Activity, Clock, CheckCircle, XCircle, RefreshCw
+  Activity, Clock, CheckCircle, XCircle, RefreshCw, Lock
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminActions } from "@/hooks/useAdminActions";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminStats {
   totalUsers: number;
@@ -36,9 +38,25 @@ const AdminOverview = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+  
+  const { verifyAdminRole } = useAdminActions();
+  const { toast } = useToast();
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
+      // Server-side admin verification
+      const isAdmin = await verifyAdminRole();
+      if (!isAdmin) {
+        setAccessDenied(true);
+        toast({
+          title: "Access Denied",
+          description: "Admin verification failed",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Fetch all stats in parallel
       const [
         usersResult,
@@ -79,11 +97,16 @@ const AdminOverview = () => {
       });
     } catch (error) {
       console.error('Error fetching admin stats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load admin statistics",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [verifyAdminRole, toast]);
 
   useEffect(() => {
     fetchStats();
@@ -153,10 +176,21 @@ const AdminOverview = () => {
     },
   ];
 
+  if (accessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <Lock className="h-12 w-12 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold text-foreground mb-2">Access Denied</h2>
+        <p className="text-muted-foreground">You do not have admin privileges to view this content.</p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+        <span className="ml-3 text-muted-foreground">Loading admin dashboard...</span>
       </div>
     );
   }

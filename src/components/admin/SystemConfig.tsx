@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { 
   Settings, Play, Pause, RefreshCw, Shield, AlertTriangle,
-  Bell, Gauge, Save, Clock
+  Bell, Gauge, Save, Clock, Lock, Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Json } from "@/integrations/supabase/types";
+import { useAdminActions } from "@/hooks/useAdminActions";
+import type { Json } from "@/integrations/supabase/types";
 
 interface SystemSettings {
   engineEnabled: boolean;
@@ -45,15 +55,28 @@ const defaultSettings: SystemSettings = {
 
 const SystemConfig = () => {
   const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
+  const [originalSettings, setOriginalSettings] = useState<SystemSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: string }>({ open: false, action: '' });
+  
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { isProcessing, updateSystemConfig, triggerEngine, verifyAdminRole } = useAdminActions();
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
+        // Verify admin access first
+        const isAdmin = await verifyAdminRole();
+        if (!isAdmin) {
+          toast({
+            title: "Access Denied",
+            description: "Admin verification failed",
+            variant: "destructive"
+          });
+          return;
+        }
+
         const { data, error } = await supabase
           .from('admin_settings')
           .select('settings')
@@ -64,7 +87,7 @@ const SystemConfig = () => {
 
         if (data?.settings) {
           const savedSettings = data.settings as Record<string, Json>;
-          setSettings({
+          const loadedSettings: SystemSettings = {
             engineEnabled: (savedSettings.engineEnabled as boolean) ?? defaultSettings.engineEnabled,
             cveSourceEnabled: (savedSettings.cveSourceEnabled as boolean) ?? defaultSettings.cveSourceEnabled,
             certInSourceEnabled: (savedSettings.certInSourceEnabled as boolean) ?? defaultSettings.certInSourceEnabled,
@@ -73,74 +96,34 @@ const SystemConfig = () => {
             highThreshold: (savedSettings.highThreshold as number) ?? defaultSettings.highThreshold,
             mediumThreshold: (savedSettings.mediumThreshold as number) ?? defaultSettings.mediumThreshold,
             engineSchedule: (savedSettings.engineSchedule as string) ?? defaultSettings.engineSchedule
-          });
+          };
+          setSettings(loadedSettings);
+          setOriginalSettings(loadedSettings);
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load settings",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchSettings();
-  }, []);
+  }, [toast, verifyAdminRole]);
 
   const handleSaveSettings = async () => {
-    setIsSaving(true);
-
-    try {
-      // Check if settings exist
-      const { data: existing } = await supabase
-        .from('admin_settings')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
-
-      const settingsPayload = {
-        settings: settings as unknown as Json,
-        updated_by: user?.id,
-        updated_at: new Date().toISOString()
-      };
-
-      if (existing) {
-        const { error } = await supabase
-          .from('admin_settings')
-          .update(settingsPayload)
-          .eq('id', existing.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('admin_settings')
-          .insert(settingsPayload);
-
-        if (error) throw error;
-      }
-
-      // Log audit
-      await supabase.from('admin_audit_logs').insert({
-        admin_id: user?.id,
-        page_affected: 'system_config',
-        action_performed: 'update_settings',
-        previous_value: null,
-        new_value: JSON.stringify(settings)
-      });
-
-      toast({
-        title: "Settings saved",
-        description: "System configuration has been updated"
-      });
-
+    const result = await updateSystemConfig(
+      settings as unknown as Json, 
+      originalSettings as unknown as Json
+    );
+    
+    if (result.success) {
+      setOriginalSettings(settings);
       setHasChanges(false);
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save settings",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -150,40 +133,20 @@ const SystemConfig = () => {
   };
 
   const handleTriggerEngine = async () => {
-    try {
-      const { error } = await supabase.functions.invoke('cve-engine', {
-        body: { trigger: 'manual' }
-      });
+    setConfirmDialog({ open: false, action: '' });
+    await triggerEngine();
+  };
 
-      if (error) throw error;
-
-      // Log audit
-      await supabase.from('admin_audit_logs').insert({
-        admin_id: user?.id,
-        page_affected: 'system_config',
-        action_performed: 'trigger_engine',
-        previous_value: null,
-        new_value: 'manual_trigger'
-      });
-
-      toast({
-        title: "Engine triggered",
-        description: "CVE engine has been manually triggered"
-      });
-    } catch (error) {
-      console.error('Error triggering engine:', error);
-      toast({
-        title: "Engine trigger failed",
-        description: "Could not trigger the CVE engine",
-        variant: "destructive"
-      });
-    }
+  const handleResetChanges = () => {
+    setSettings(originalSettings);
+    setHasChanges(false);
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+        <span className="ml-3 text-muted-foreground">Loading configuration...</span>
       </div>
     );
   }
@@ -196,11 +159,37 @@ const SystemConfig = () => {
           <h1 className="text-2xl font-display font-bold text-foreground">System Configuration</h1>
           <p className="text-muted-foreground">Manage engine settings, sources, and thresholds</p>
         </div>
-        <Button onClick={handleSaveSettings} disabled={!hasChanges || isSaving}>
-          <Save className="h-4 w-4 mr-2" />
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <Button variant="outline" onClick={handleResetChanges} disabled={isProcessing}>
+              Reset
+            </Button>
+          )}
+          <Button onClick={handleSaveSettings} disabled={!hasChanges || isProcessing}>
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {isProcessing ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
       </div>
+
+      {/* Security Notice */}
+      <Card className="border-accent/20 bg-accent/5">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Lock className="h-5 w-5 text-accent" />
+            <div>
+              <span className="text-sm font-medium text-foreground">Configuration Protected</span>
+              <p className="text-xs text-muted-foreground">
+                All changes are validated server-side and logged immutably in the audit trail.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Engine Controls */}
       <Card className="border-border">
@@ -239,10 +228,14 @@ const SystemConfig = () => {
           <div className="flex items-center gap-4">
             <Button 
               variant="outline" 
-              onClick={handleTriggerEngine}
-              disabled={!settings.engineEnabled}
+              onClick={() => setConfirmDialog({ open: true, action: 'trigger_engine' })}
+              disabled={!settings.engineEnabled || isProcessing}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
               Trigger Engine Manually
             </Button>
             <div className="flex items-center gap-2">
@@ -398,6 +391,26 @@ const SystemConfig = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Engine Trigger Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, action: '' })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Trigger CVE Engine</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will manually trigger the CVE matching engine to process all tech stack entries.
+              This action will be logged in the audit trail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTriggerEngine} disabled={isProcessing}>
+              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirm Trigger
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

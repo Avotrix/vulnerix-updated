@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
-  Users, Search, Filter, Shield, User, Building2, 
-  Mail, Package, MoreVertical, UserX, UserCheck, Key, AlertTriangle
+  Users, Search, Shield, User, Building2, 
+  Package, MoreVertical, UserX, AlertTriangle, Loader2, Ban, RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,9 +30,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminActions } from "@/hooks/useAdminActions";
 
 interface UserData {
   id: string;
@@ -49,17 +60,37 @@ const UserManagement = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [orgFilter, setOrgFilter] = useState<string>('all');
   const [orgs, setOrgs] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [actionDialog, setActionDialog] = useState<{ type: string; open: boolean }>({ type: '', open: false });
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: () => void; title: string; description: string }>({
+    open: false,
+    action: () => {},
+    title: '',
+    description: ''
+  });
+  
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const { isProcessing, assignAdminRole, removeAdminRole, verifyAdminRole } = useAdminActions();
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
+      // Server-side admin verification before fetching sensitive data
+      const isAdmin = await verifyAdminRole();
+      if (!isAdmin) {
+        toast({
+          title: "Access Denied",
+          description: "Admin verification failed",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Fetch user settings
       const { data: settings, error: settingsError } = await supabase
         .from('user_settings')
@@ -121,8 +152,9 @@ const UserManagement = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, [toast, verifyAdminRole]);
 
   useEffect(() => {
     fetchUsers();
@@ -153,7 +185,12 @@ const UserManagement = () => {
     setFilteredUsers(filtered);
   }, [searchQuery, roleFilter, orgFilter, users]);
 
-  const handleAssignRole = async (userId: string, role: 'admin' | 'user') => {
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchUsers();
+  };
+
+  const handleAssignRole = async (role: 'admin' | 'user') => {
     if (!selectedUser?.user_id) {
       toast({
         title: "Error",
@@ -163,71 +200,45 @@ const UserManagement = () => {
       return;
     }
 
-    try {
-      if (role === 'admin') {
-        // Insert admin role
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: selectedUser.user_id, role: 'admin' });
-
-        if (error) throw error;
-
-        // Log audit
-        await supabase.from('admin_audit_logs').insert({
-          admin_id: currentUser?.id,
-          page_affected: 'user_management',
-          action_performed: 'assign_admin_role',
-          previous_value: 'user',
-          new_value: 'admin'
-        });
-
-        toast({
-          title: "Success",
-          description: "Admin role assigned successfully"
-        });
-      } else {
-        // Remove admin role
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', selectedUser.user_id)
-          .eq('role', 'admin');
-
-        if (error) throw error;
-
-        // Log audit
-        await supabase.from('admin_audit_logs').insert({
-          admin_id: currentUser?.id,
-          page_affected: 'user_management',
-          action_performed: 'remove_admin_role',
-          previous_value: 'admin',
-          new_value: 'user'
-        });
-
-        toast({
-          title: "Success",
-          description: "Admin role removed successfully"
-        });
-      }
-
-      fetchUsers();
-    } catch (error) {
-      console.error('Error updating role:', error);
+    // Prevent self-modification
+    if (selectedUser.user_id === currentUser?.id) {
       toast({
         title: "Error",
-        description: "Failed to update role",
+        description: "Cannot modify your own role",
         variant: "destructive"
       });
+      return;
+    }
+
+    let result;
+    if (role === 'admin') {
+      result = await assignAdminRole(selectedUser.user_id);
+    } else {
+      result = await removeAdminRole(selectedUser.user_id);
+    }
+
+    if (result.success) {
+      fetchUsers();
     }
 
     setActionDialog({ type: '', open: false });
     setSelectedUser(null);
   };
 
+  const showConfirmation = (title: string, description: string, action: () => void) => {
+    setConfirmDialog({
+      open: true,
+      title,
+      description,
+      action
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+        <span className="ml-3 text-muted-foreground">Loading user data...</span>
       </div>
     );
   }
@@ -235,10 +246,36 @@ const UserManagement = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-display font-bold text-foreground">User Management</h1>
-        <p className="text-muted-foreground">Manage users, roles, and access permissions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-foreground">User Management</h1>
+          <p className="text-muted-foreground">Manage users, roles, and access permissions</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
+
+      {/* Security Notice */}
+      <Card className="border-accent/20 bg-accent/5">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Shield className="h-5 w-5 text-accent" />
+            <div>
+              <span className="text-sm font-medium text-foreground">Server-Authoritative Access Control</span>
+              <p className="text-xs text-muted-foreground">
+                All role changes are verified server-side and logged immutably. Self-escalation is prevented.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card className="border-border">
@@ -411,10 +448,11 @@ const UserManagement = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog({ type: '', open: false })}>
+            <Button variant="outline" onClick={() => setActionDialog({ type: '', open: false })} disabled={isProcessing}>
               Cancel
             </Button>
-            <Button onClick={() => handleAssignRole(selectedUser?.id || '', 'admin')}>
+            <Button onClick={() => handleAssignRole('admin')} disabled={isProcessing}>
+              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirm Promotion
             </Button>
           </DialogFooter>
@@ -435,10 +473,11 @@ const UserManagement = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog({ type: '', open: false })}>
+            <Button variant="outline" onClick={() => setActionDialog({ type: '', open: false })} disabled={isProcessing}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => handleAssignRole(selectedUser?.id || '', 'user')}>
+            <Button variant="destructive" onClick={() => handleAssignRole('user')} disabled={isProcessing}>
+              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Remove Admin Role
             </Button>
           </DialogFooter>
