@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   Search, Filter, ExternalLink, ChevronLeft, ChevronRight,
-  AlertCircle, Info, Shield, Mail, MailCheck
+  AlertCircle, Info, Shield, Mail, MailCheck, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,35 +21,28 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getAdvisories, addToEmailQueue, getEmailQueue, getTechStacks } from "@/lib/storage";
+import { useTechStackResults, useTechStacks } from "@/hooks/useSupabaseData";
+import { getCertInToggle } from "@/lib/storage";
 import { Advisory, TechStack } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
-
-const CERTIN_TOGGLE_KEY = 'vulnerix_certin_toggle';
 
 const ITEMS_PER_PAGE = 5;
 
 const Advisories = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [advisories, setAdvisories] = useState<Advisory[]>([]);
-  const [techStacks, setTechStacks] = useState<TechStack[]>([]);
+  const { results: advisories, isLoading } = useTechStackResults();
+  const { techStacks } = useTechStacks();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [vendorFilter, setVendorFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [emailStatuses, setEmailStatuses] = useState<Record<string, string>>({});
-  const [certInEnabled, setCertInEnabled] = useState(() => {
-    const stored = localStorage.getItem(CERTIN_TOGGLE_KEY);
-    return stored !== 'false';
-  });
+  const [certInEnabled] = useState(getCertInToggle);
 
   useEffect(() => {
-    setAdvisories(getAdvisories());
-    setTechStacks(getTechStacks());
-    updateEmailStatuses();
-    
     // Check for CVE search param from notification click
     const cveParam = searchParams.get('cve');
     if (cveParam) {
@@ -57,14 +50,6 @@ const Advisories = () => {
       // Clear the search param after setting the filter
       setSearchParams({});
     }
-
-    // Listen for storage changes to sync CERT-In toggle
-    const handleStorageChange = () => {
-      const stored = localStorage.getItem(CERTIN_TOGGLE_KEY);
-      setCertInEnabled(stored !== 'false');
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, [searchParams, setSearchParams]);
 
   // Build vendor email map from Tech Stack
@@ -77,15 +62,6 @@ const Advisories = () => {
     });
     return map;
   }, [techStacks]);
-
-  const updateEmailStatuses = () => {
-    const queue = getEmailQueue();
-    const statuses: Record<string, string> = {};
-    queue.forEach(item => {
-      statuses[item.advisoryId] = item.status;
-    });
-    setEmailStatuses(statuses);
-  };
 
   // Get unique vendors from Tech Stack (dynamic)
   const vendors = useMemo(() => {
@@ -138,7 +114,6 @@ const Advisories = () => {
       return;
     }
 
-    addToEmailQueue(advisory.cve_id, targetEmail);
     setEmailStatuses(prev => ({ ...prev, [advisory.cve_id]: 'queued' }));
     
     toast({
@@ -146,7 +121,7 @@ const Advisories = () => {
       description: `Notification will be sent to ${targetEmail}`,
     });
 
-    // Update status after simulated send
+    // Simulate email sending
     setTimeout(() => {
       setEmailStatuses(prev => ({ ...prev, [advisory.cve_id]: 'sent' }));
     }, 2000);
@@ -174,6 +149,16 @@ const Advisories = () => {
     if (advisory.versionEndExcluding) parts.push(`< ${advisory.versionEndExcluding}`);
     return parts.length > 0 ? parts.join(', ') : null;
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -329,18 +314,20 @@ const Advisories = () => {
 
                   {/* Right Section - Actions */}
                   <div className="flex flex-col gap-2 lg:w-40">
-                    <a 
-                      href={advisory.Reference_URL} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="outline" size="sm" className="w-full">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Reference
-                      </Button>
-                    </a>
+                    {advisory.Reference_URL && (
+                      <a 
+                        href={advisory.Reference_URL} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" size="sm" className="w-full">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Reference
+                        </Button>
+                      </a>
+                    )}
                     
-                    {/* Mail Me button for all advisories */}
+                    {/* Mail Me button */}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -384,7 +371,12 @@ const Advisories = () => {
             <div className="text-center py-12">
               <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No advisories found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+              <p className="text-muted-foreground">
+                {advisories.length === 0 
+                  ? "Add products to your tech stack to see vulnerability advisories"
+                  : "Try adjusting your search or filters"
+                }
+              </p>
             </div>
           )}
         </div>
@@ -425,9 +417,9 @@ const Advisories = () => {
                   return (
                     <Button
                       key={page}
-                      variant={currentPage === page ? "default" : "ghost"}
+                      variant={currentPage === page ? "default" : "outline"}
                       size="sm"
-                      className="w-9"
+                      className="w-8 h-8 p-0"
                       onClick={() => setCurrentPage(page)}
                     >
                       {page}

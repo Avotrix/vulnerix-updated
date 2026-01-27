@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   LayoutDashboard, FileText, Package, Settings, 
@@ -20,7 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { getAdvisories } from "@/lib/storage";
+import { useTechStackResults } from "@/hooks/useSupabaseData";
 import { Advisory } from "@/lib/mockData";
 import { SeverityBadge } from "@/components/ui/severity-badge";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
@@ -46,14 +46,6 @@ const markNotificationAsRead = (cveId: string) => {
   }
 };
 
-const clearAllNotifications = () => {
-  const advisories = getAdvisories();
-  const allCriticalHighIds = advisories
-    .filter(a => a.Severity === 'Critical' || a.Severity === 'High')
-    .map(a => a.cve_id);
-  localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allCriticalHighIds));
-};
-
 const getNotificationSettings = () => {
   const data = localStorage.getItem(SETTINGS_KEY);
   if (data) {
@@ -73,11 +65,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { results: advisories } = useTechStackResults();
   const [notifications, setNotifications] = useState<Advisory[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
-  const loadNotifications = () => {
-    const advisories = getAdvisories();
+  // Get user display info from metadata
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+  const userOrg = user?.user_metadata?.organization || 'Organization';
+
+  const loadNotifications = useCallback(() => {
     const readIds = getReadNotifications();
     const settings = getNotificationSettings();
     const certInEnabled = localStorage.getItem(CERTIN_TOGGLE_KEY) !== 'false';
@@ -116,14 +112,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     }).slice(0, 10);
     
     setNotifications(unreadAdvisories);
-  };
+  }, [advisories]);
 
   useEffect(() => {
     loadNotifications();
-  }, [location.pathname]);
+  }, [loadNotifications, location.pathname]);
 
   const handleClearAll = () => {
-    clearAllNotifications();
+    const allCriticalHighIds = advisories
+      .filter(a => a.Severity === 'Critical' || a.Severity === 'High')
+      .map(a => a.cve_id);
+    localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allCriticalHighIds));
     setNotifications([]);
     setIsNotificationOpen(false);
   };
@@ -135,8 +134,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: Phone, label: 'Contact', path: '/contact' },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -275,8 +274,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     <User className="h-4 w-4 text-accent" />
                   </div>
                   <div className="hidden sm:block text-left">
-                    <div className="text-sm font-medium">{user?.name || 'User'}</div>
-                    <div className="text-xs text-muted-foreground">{user?.organization || 'Organization'}</div>
+                    <div className="text-sm font-medium">{userName}</div>
+                    <div className="text-xs text-muted-foreground">{userOrg}</div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>

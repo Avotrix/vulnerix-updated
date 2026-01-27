@@ -1,14 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/lib/mockData';
-import { getUser, setUser as saveUser, removeUser, setHasVisited } from '@/lib/storage';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string, organization: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,48 +28,72 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Mock user database in localStorage
-const USERS_KEY = 'vulnerix_users';
-
-const getUsers = (): Array<User & { password: string }> => {
-  const data = localStorage.getItem(USERS_KEY);
-  return data ? JSON.parse(data) : [];
-};
-
-const saveUsers = (users: Array<User & { password: string }>) => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const existingUser = getUser();
-    if (existingUser) {
-      setUser(existingUser);
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Create user_settings on sign up if needed
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(() => {
+            createUserSettingsIfNeeded(session.user);
+          }, 0);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const users = getUsers();
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser;
-      userWithoutPassword.isNewUser = false;
-      setUser(userWithoutPassword);
-      saveUser(userWithoutPassword);
-      setHasVisited();
-      return { success: true };
+  const createUserSettingsIfNeeded = async (user: User) => {
+    // Check if user settings already exist
+    const { data: existingSettings } = await supabase
+      .from('user_settings')
+      .select('id')
+      .eq('email_id', user.email)
+      .maybeSingle();
+
+    if (!existingSettings && user.email) {
+      // Create user settings
+      const metadata = user.user_metadata || {};
+      await supabase.from('user_settings').insert({
+        email_id: user.email,
+        org_name: metadata.organization || 'Default Organization',
+        user_id: user.id,
+        notification_level: 'all'
+      });
     }
-    
-    return { success: false, error: 'Invalid email or password' };
+  };
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
+    }
   };
 
   const register = async (
@@ -75,52 +102,92 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     name: string,
     organization: string
   ): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const users = getUsers();
-    
-    if (users.find(u => u.email === email)) {
-      return { success: false, error: 'Email already registered' };
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name,
+            organization
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Auto-confirm is enabled, so user should be signed in
+      if (data.user) {
+        // Create user settings
+        await supabase.from('user_settings').insert({
+          email_id: email,
+          org_name: organization,
+          user_id: data.user.id,
+          notification_level: 'all'
+        });
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
     }
-    
-    const newUser: User & { password: string } = {
-      id: crypto.randomUUID(),
-      email,
-      password,
-      name,
-      organization,
-      createdAt: new Date().toISOString(),
-      isNewUser: true
-    };
-    
-    users.push(newUser);
-    saveUsers(users);
-    
-    const { password: _, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    saveUser(userWithoutPassword);
-    setHasVisited();
-    
-    return { success: true };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    removeUser();
-    // Clear visited flag so landing page shows again for logged out users
-    localStorage.removeItem('vulnerix_visited');
+    setSession(null);
+  };
+
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  };
+
+  const updatePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        session,
+        isAuthenticated: !!session,
         isLoading,
         login,
         register,
-        logout
+        logout,
+        resetPassword,
+        updatePassword
       }}
     >
       {children}

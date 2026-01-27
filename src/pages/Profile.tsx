@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Building, Save, Check } from "lucide-react";
+import { User, Mail, Building, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +37,9 @@ const Profile = () => {
       setProfile(JSON.parse(stored));
     } else if (user) {
       setProfile({
-        name: user.name || '',
+        name: user.user_metadata?.name || user.email?.split('@')[0] || '',
         email: user.email || '',
-        organization: user.organization || '',
+        organization: user.user_metadata?.organization || '',
         phone: '',
         role: ''
       });
@@ -64,7 +64,7 @@ const Profile = () => {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-display font-bold text-navy">Profile</h1>
+          <h1 className="text-3xl font-display font-bold text-foreground">Profile</h1>
           <p className="text-muted-foreground">Manage your personal information</p>
         </div>
 
@@ -81,7 +81,7 @@ const Profile = () => {
                 <User className="h-10 w-10 text-accent" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-navy">{profile.name || 'Your Name'}</h2>
+                <h2 className="text-xl font-semibold text-foreground">{profile.name || 'Your Name'}</h2>
                 <p className="text-muted-foreground">{profile.email || 'your@email.com'}</p>
               </div>
             </div>
@@ -114,7 +114,7 @@ const Profile = () => {
                     placeholder="john@company.com"
                     className="pl-10"
                     value={profile.email}
-                    onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
+                    disabled
                   />
                 </div>
               </div>

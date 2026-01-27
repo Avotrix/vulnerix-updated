@@ -1,1 +1,4 @@
 project_id = "ukookcrofpwlukdfvpxa"
+
+[functions.cve-engine]
+verify_jwt = false
