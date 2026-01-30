@@ -1,6 +1,9 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Production mode check - suppress verbose logging
+const isDev = import.meta.env.DEV;
 
 /**
  * Hook to subscribe to real-time updates on tech_stack_results
@@ -8,9 +11,15 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 export const useRealtimeResults = (onUpdate: () => void) => {
   const { user } = useAuth();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const subscribeToResults = useCallback(() => {
     if (!user?.email) return null;
+
+    // Cleanup existing channel before creating new one
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
 
     const channel = supabase
       .channel('tech_stack_results_changes')
@@ -22,8 +31,7 @@ export const useRealtimeResults = (onUpdate: () => void) => {
           table: 'tech_stack_results',
           filter: `email_id=eq.${user.email}`
         },
-        (payload) => {
-          console.log('[Realtime] New result inserted:', payload);
+        () => {
           onUpdate();
         }
       )
@@ -35,15 +43,18 @@ export const useRealtimeResults = (onUpdate: () => void) => {
           table: 'tech_stack_results',
           filter: `email_id=eq.${user.email}`
         },
-        (payload) => {
-          console.log('[Realtime] Result updated:', payload);
+        () => {
           onUpdate();
         }
       )
       .subscribe((status) => {
-        console.log('[Realtime] Subscription status:', status);
+        // Only log in development mode
+        if (isDev && status !== 'SUBSCRIBED') {
+          // Silently handle subscription status changes
+        }
       });
 
+    channelRef.current = channel;
     return channel;
   }, [user?.email, onUpdate]);
 
@@ -64,9 +75,15 @@ export const useRealtimeResults = (onUpdate: () => void) => {
  */
 export const useRealtimeTechStack = (onUpdate: () => void) => {
   const { user } = useAuth();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const subscribeToTechStack = useCallback(() => {
     if (!user?.email) return null;
+
+    // Cleanup existing channel before creating new one
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
 
     const channel = supabase
       .channel('tech_stack_changes')
@@ -78,15 +95,13 @@ export const useRealtimeTechStack = (onUpdate: () => void) => {
           table: 'tech_stack',
           filter: `email_id=eq.${user.email}`
         },
-        (payload) => {
-          console.log('[Realtime] Tech stack changed:', payload);
+        () => {
           onUpdate();
         }
       )
-      .subscribe((status) => {
-        console.log('[Realtime] Tech stack subscription status:', status);
-      });
+      .subscribe(); // Silent subscription - no logging
 
+    channelRef.current = channel;
     return channel;
   }, [user?.email, onUpdate]);
 
