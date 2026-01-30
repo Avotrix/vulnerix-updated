@@ -95,8 +95,8 @@ const AdminOverview = () => {
         engineStatus: 'idle',
         lastEngineRun: null
       });
-    } catch (error) {
-      console.error('Error fetching admin stats:', error);
+    } catch {
+      // Silent failure for admin stats - show toast only
       toast({
         title: "Error",
         description: "Failed to load admin statistics",

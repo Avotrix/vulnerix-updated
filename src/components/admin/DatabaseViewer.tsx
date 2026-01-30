@@ -119,10 +119,19 @@ const DatabaseViewer = () => {
         const counts: Record<string, number> = {};
 
         for (const tableName of tableNames) {
-          const { count } = await supabase
-            .from(tableName as any)
-            .select('id', { count: 'exact', head: true });
-          counts[tableName] = count || 0;
+          try {
+            // user_access uses user_id as primary key, others use id
+            const columnToSelect = tableName === 'user_access' ? 'user_id' : 'id';
+            const { count, error } = await supabase
+              .from(tableName as any)
+              .select(columnToSelect, { count: 'exact', head: true });
+            
+            // Gracefully handle errors (e.g., RLS restrictions)
+            counts[tableName] = error ? 0 : (count || 0);
+          } catch {
+            // Silently handle individual table query failures
+            counts[tableName] = 0;
+          }
         }
 
         const tableInfos: TableInfo[] = tableNames.map(name => ({
@@ -134,8 +143,8 @@ const DatabaseViewer = () => {
         }));
 
         setTables(tableInfos);
-      } catch (error) {
-        console.error('Error fetching table info:', error);
+      } catch {
+        // Silent failure - no console error in production
       } finally {
         setIsLoading(false);
       }

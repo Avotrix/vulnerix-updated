@@ -209,8 +209,8 @@ export const useDashboardStats = () => {
         medium: results.filter(r => r.severity_cve === 'Medium').length,
         low: results.filter(r => r.severity_cve === 'Low').length
       });
-    } catch (err) {
-      console.error('Error fetching stats:', err);
+    } catch {
+      // Silent failure - stats will remain at defaults
     } finally {
       setIsLoading(false);
     }
@@ -248,8 +248,8 @@ export const useUserSettings = () => {
           .maybeSingle();
 
         setSettings(data);
-      } catch (err) {
-        console.error('Error fetching settings:', err);
+      } catch {
+        // Silent failure - settings will remain null
       } finally {
         setIsLoading(false);
       }

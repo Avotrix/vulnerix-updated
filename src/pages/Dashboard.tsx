@@ -31,7 +31,6 @@ const Dashboard = () => {
 
   // Real-time subscription for auto-updating dashboard
   const handleRealtimeUpdate = useCallback(() => {
-    console.log('[Dashboard] Real-time update received, refetching data...');
     refetchStats();
     refetchResults();
   }, [refetchStats, refetchResults]);
