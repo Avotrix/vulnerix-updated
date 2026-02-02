@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, LayoutDashboard, Database, ShieldAlert, User, Settings, Phone, Upload, Edit, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,7 +94,7 @@ interface DemoTourProps {
   onClose: () => void;
 }
 
-const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
+const DemoTour = forwardRef<HTMLDivElement, DemoTourProps>(({ isOpen, onClose }, ref) => {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
@@ -130,6 +130,7 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          ref={ref}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -248,6 +249,8 @@ const DemoTour = ({ isOpen, onClose }: DemoTourProps) => {
       )}
     </AnimatePresence>
   );
-};
+});
+
+DemoTour.displayName = 'DemoTour';
 
 export default DemoTour;

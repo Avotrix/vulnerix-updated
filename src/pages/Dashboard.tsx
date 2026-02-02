@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SeverityBadge } from "@/components/ui/severity-badge";
 import { useDashboardStats, useTechStackResults } from "@/hooks/useSupabaseData";
-import { useRealtimeResults } from "@/hooks/useRealtimeResults";
 import { getCertInToggle, setCertInToggle } from "@/lib/storage";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Switch } from "@/components/ui/switch";
@@ -28,15 +27,6 @@ const Dashboard = () => {
   const { stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { results: allAdvisories, isLoading: advisoriesLoading, refetch: refetchResults } = useTechStackResults();
   const [certInEnabled, setCertInEnabledState] = useState(getCertInToggle);
-
-  // Real-time subscription for auto-updating dashboard
-  const handleRealtimeUpdate = useCallback(() => {
-    refetchStats();
-    refetchResults();
-  }, [refetchStats, refetchResults]);
-
-  // Subscribe to real-time updates from tech_stack_results
-  useRealtimeResults(handleRealtimeUpdate);
 
   const handleCertInToggle = (enabled: boolean) => {
     setCertInEnabledState(enabled);
@@ -412,17 +402,17 @@ const Dashboard = () => {
           </motion.div>
         </div>
 
-        {/* Recent Advisories */}
+        {/* Recent Advisories Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.3 }}
           className="bg-card rounded-xl border border-border overflow-hidden"
         >
           <div className="flex items-center justify-between p-6 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-severity-critical/10 flex items-center justify-center">
-                <Bell className="h-5 w-5 text-severity-critical" />
+                <AlertCircle className="h-5 w-5 text-severity-critical" />
               </div>
               <div>
                 <h2 className="text-lg font-display font-semibold text-foreground">Recent Advisories</h2>
@@ -432,54 +422,58 @@ const Dashboard = () => {
             <Link to="/advisories">
               <Button variant="outline" size="sm">
                 View All
-                <ExternalLink className="h-4 w-4 ml-2" />
               </Button>
             </Link>
           </div>
           
           <div className="divide-y divide-border">
-            {filteredAdvisories.slice(0, 5).map((advisory, index) => (
-              <div
-                key={advisory.cve_id}
-                className="p-4 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  <div className={cn(
-                    "h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                    advisory.Severity === 'Critical' ? 'bg-severity-critical/10' : 
-                    advisory.Severity === 'High' ? 'bg-severity-high/10' :
-                    advisory.Severity === 'Medium' ? 'bg-severity-medium/10' :
-                    'bg-severity-low/10'
-                  )}>
-                    <AlertCircle className={cn(
-                      "h-5 w-5",
-                      advisory.Severity === 'Critical' ? 'text-severity-critical' : 
-                      advisory.Severity === 'High' ? 'text-severity-high' :
-                      advisory.Severity === 'Medium' ? 'text-severity-medium' :
-                      'text-severity-low'
-                    )} />
-                  </div>
+            {filteredAdvisories.slice(0, 5).map((advisory) => (
+              <div key={advisory.cve_id} className="p-4 hover:bg-muted/50 transition-colors">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-mono text-sm font-semibold text-foreground">
                         {advisory.cve_id}
                       </span>
                       <SeverityBadge severity={advisory.Severity} />
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(advisory.lastModified)}
+                      </span>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-1">
                       {advisory.Description}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {advisory.tech_stack_product} • {formatDate(advisory.lastModified)}
-                    </p>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      <span>{advisory.tech_stack_vendor}</span>
+                      <span>•</span>
+                      <span>{advisory.tech_stack_product}</span>
+                      {advisory.tech_stack_version && (
+                        <>
+                          <span>•</span>
+                          <span className="font-mono">{advisory.tech_stack_version}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  {advisory.Reference_URL && (
+                    <a 
+                      href={advisory.Reference_URL} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent/80 transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
+            
             {filteredAdvisories.length === 0 && (
               <div className="p-8 text-center text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No advisories yet. Add products to your tech stack to see vulnerability alerts.</p>
+                <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No advisories found</p>
+                <p className="text-sm">Add products to your tech stack to see vulnerabilities</p>
               </div>
             )}
           </div>
