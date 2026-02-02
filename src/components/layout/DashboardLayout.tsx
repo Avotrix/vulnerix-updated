@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useTechStackResults } from "@/hooks/useSupabaseData";
+import { useSplunkNotifications } from "@/hooks/useSplunkData";
 import { Advisory } from "@/lib/mockData";
 import { SeverityBadge } from "@/components/ui/severity-badge";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
@@ -67,7 +67,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { isAdminAuthenticated } = useAdmin();
-  const { results: advisories } = useTechStackResults();
+  const { urgentNotifications, isLoading: notificationsLoading } = useSplunkNotifications();
   const [notifications, setNotifications] = useState<Advisory[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
@@ -75,56 +75,72 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const userOrg = user?.user_metadata?.organization || 'Organization';
 
+  // Load notifications from Splunk urgent notifications
   const loadNotifications = useCallback(() => {
     const readIds = getReadNotifications();
     const settings = getNotificationSettings();
     const certInEnabled = localStorage.getItem(CERTIN_TOGGLE_KEY) !== 'false';
     
-    // Filter based on CERT-In toggle and user preferences
-    const unreadAdvisories = advisories.filter((a) => {
-      // First, apply CERT-In toggle filter
-      if (!certInEnabled) {
-        // When CERT-In is OFF, only show CVE entries
-        if (!a.cve_id || !a.cve_id.startsWith('CVE-')) {
-          return false;
+    // Map Splunk notifications to Advisory format for display
+    const unreadNotifications = urgentNotifications
+      .filter((n) => {
+        // Already read check
+        const isUnread = !readIds.includes(n.cve_id || n.civn_id || '');
+        if (!isUnread) return false;
+
+        // Check severity preference
+        const matchesSeverity = settings.severities.includes(n.severity);
+        
+        // Check source preference (respecting CERT-In toggle)
+        const isCertIn = n.civn_id && n.civn_id.trim() !== '';
+        let matchesSource = false;
+        
+        if (settings.sources.includes('NVD') || settings.sources.includes('CVE')) {
+          if (n.cve_id && n.cve_id.startsWith('CVE-')) {
+            matchesSource = true;
+          }
         }
-      }
-      
-      // Check severity preference
-      const matchesSeverity = settings.severities.includes(a.Severity);
-      
-      // Check source preference (respecting CERT-In toggle)
-      const isCertIn = a.cvin_id && a.cvin_id.trim() !== '';
-      let matchesSource = false;
-      
-      if (settings.sources.includes('NVD') || settings.sources.includes('CVE')) {
-        if (a.cve_id && a.cve_id.startsWith('CVE-')) {
+        
+        if (certInEnabled && settings.sources.includes('CERT-In') && isCertIn) {
           matchesSource = true;
         }
-      }
-      
-      if (certInEnabled && settings.sources.includes('CERT-In') && isCertIn) {
-        matchesSource = true;
-      }
-      
-      // Not already read
-      const isUnread = !readIds.includes(a.cve_id);
-      
-      return matchesSeverity && matchesSource && isUnread;
-    }).slice(0, 10);
+        
+        return matchesSeverity && matchesSource;
+      })
+      .slice(0, 10)
+      .map((n): Advisory => ({
+        lastModified: n.lastModified,
+        cve_id: n.cve_id || n.civn_id || '',
+        Description: `Vulnerability in ${n.product}`,
+        cpe_value: '',
+        tech_stack_vendor: n.vendor,
+        tech_stack_product: n.product,
+        tech_stack_version: n.version,
+        match_status: 'Matched',
+        cvss_score: 0,
+        Severity: n.severity as 'Critical' | 'High' | 'Medium' | 'Low',
+        attack_vector: 'Network',
+        Vulnerability_Status: 'Active',
+        cvin_id: n.civn_id,
+        Reference_URL: n.cve_id ? `https://nvd.nist.gov/vuln/detail/${n.cve_id}` : '',
+        organization: '',
+        email_to: n.email_to,
+      }));
     
-    setNotifications(unreadAdvisories);
-  }, [advisories]);
+    setNotifications(unreadNotifications);
+  }, [urgentNotifications]);
 
   useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications, location.pathname]);
+    if (!notificationsLoading) {
+      loadNotifications();
+    }
+  }, [loadNotifications, notificationsLoading, location.pathname]);
 
   const handleClearAll = () => {
-    const allCriticalHighIds = advisories
-      .filter(a => a.Severity === 'Critical' || a.Severity === 'High')
-      .map(a => a.cve_id);
-    localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allCriticalHighIds));
+    // Clear all current notifications as read
+    const currentIds = notifications.map(n => n.cve_id);
+    const allReadIds = [...getReadNotifications(), ...currentIds];
+    localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allReadIds));
     setNotifications([]);
     setIsNotificationOpen(false);
   };

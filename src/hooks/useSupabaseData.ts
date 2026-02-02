@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TechStack, mapDbTechStack, mapTechStackResultToAdvisory, Advisory } from '@/lib/mockData';
+import { TechStack, mapDbTechStack, Advisory } from '@/lib/mockData';
+import { useSplunkAdvisories, useSplunkDashboard, getHighestSeverity } from './useSplunkData';
 
-// Hook to fetch tech stack data
+// Hook to fetch tech stack data (still from Supabase - user's inventory)
 export const useTechStacks = () => {
   const { user } = useAuth();
   const [techStacks, setTechStacks] = useState<TechStack[]>([]);
@@ -110,117 +111,64 @@ export const useTechStacks = () => {
   };
 };
 
-// Hook to fetch tech stack results (advisories)
+// Hook to fetch tech stack results (advisories) - NOW FROM SPLUNK
 export const useTechStackResults = () => {
-  const { user } = useAuth();
-  const [results, setResults] = useState<Advisory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchResults = useCallback(async () => {
-    if (!user?.email) {
-      setResults([]);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('tech_stack_results')
-        .select('*')
-        .eq('email_id', user.email)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      setResults((data || []).map(mapTechStackResultToAdvisory));
-      setError(null);
-    } catch (err: any) {
-      setError(err.message);
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.email]);
-
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+  const { advisories, isLoading, error, refetch } = useSplunkAdvisories();
 
   return {
-    results,
+    results: advisories,
     isLoading,
     error,
-    refetch: fetchResults
+    refetch
   };
 };
 
-// Hook to fetch dashboard stats from tech_stack_results
+// Hook to fetch dashboard stats - NOW FROM SPLUNK
 export const useDashboardStats = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    totalAdvisories: 0,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0
-  });
+  const { stats: splunkStats, isLoading: splunkLoading, refetch } = useSplunkDashboard();
+  const [productCount, setProductCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchStats = useCallback(async () => {
-    if (!user?.email) {
-      setStats({
-        totalProducts: 0,
-        totalAdvisories: 0,
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      // Get total products from tech_stack
-      const { count: productsCount } = await supabase
-        .from('tech_stack')
-        .select('*', { count: 'exact', head: true })
-        .eq('email_id', user.email);
-
-      // Get results with severity counts
-      const { data: resultsData } = await supabase
-        .from('tech_stack_results')
-        .select('severity_cve, cve_match')
-        .eq('email_id', user.email);
-
-      const results = resultsData || [];
-      const advisoriesWithCVE = results.filter(r => r.cve_match);
-
-      setStats({
-        totalProducts: productsCount || 0,
-        totalAdvisories: advisoriesWithCVE.length,
-        critical: results.filter(r => r.severity_cve === 'Critical').length,
-        high: results.filter(r => r.severity_cve === 'High').length,
-        medium: results.filter(r => r.severity_cve === 'Medium').length,
-        low: results.filter(r => r.severity_cve === 'Low').length
-      });
-    } catch {
-      // Silent failure - stats will remain at defaults
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.email]);
-
+  // Still fetch product count from Supabase (user's tech stack)
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    const fetchProductCount = async () => {
+      if (!user?.email) {
+        setProductCount(0);
+        setIsLoading(false);
+        return;
+      }
 
-  return { stats, isLoading, refetch: fetchStats };
+      try {
+        const { count } = await supabase
+          .from('tech_stack')
+          .select('*', { count: 'exact', head: true })
+          .eq('email_id', user.email);
+
+        setProductCount(count || 0);
+      } catch {
+        // Silent failure
+      } finally {
+        setIsLoading(splunkLoading);
+      }
+    };
+
+    fetchProductCount();
+  }, [user?.email, splunkLoading]);
+
+  const stats = {
+    totalProducts: productCount,
+    totalAdvisories: splunkStats.totalAdvisories,
+    totalCVEs: splunkStats.totalCVEs,
+    totalCERTIN: splunkStats.totalCERTIN,
+    critical: splunkStats.criticalCount,
+    high: splunkStats.highCount,
+    medium: splunkStats.mediumCount,
+    low: splunkStats.lowCount,
+    globalRisk: splunkStats.globalRisk,
+  };
+
+  return { stats, isLoading, refetch };
 };
 
 // Hook to get user settings
@@ -260,3 +208,6 @@ export const useUserSettings = () => {
 
   return { settings, isLoading };
 };
+
+// Re-export Splunk utilities for direct use
+export { getHighestSeverity } from './useSplunkData';
