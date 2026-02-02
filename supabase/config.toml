@@ -2,3 +2,6 @@ project_id = "ukookcrofpwlukdfvpxa"
 
 [functions.cve-engine]
 verify_jwt = false
+
+[functions.splunk-advisories]
+verify_jwt = false
