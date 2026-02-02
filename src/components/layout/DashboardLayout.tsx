@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   LayoutDashboard, FileText, Package, Settings, 
-  LogOut, User, ChevronDown, Bell, Phone, Shield, X, Trash2
+  LogOut, User, ChevronDown, Bell, Phone, Shield, Trash2
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -67,7 +67,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { isAdminAuthenticated } = useAdmin();
-  const { urgentNotifications, isLoading: notificationsLoading } = useSplunkNotifications();
+  // Use full Advisory objects from Splunk - no fabrication
+  const { urgentAdvisories, isLoading: notificationsLoading } = useSplunkNotifications();
   const [notifications, setNotifications] = useState<Advisory[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
@@ -75,28 +76,30 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const userOrg = user?.user_metadata?.organization || 'Organization';
 
-  // Load notifications from Splunk urgent notifications
+  // Load notifications directly from Splunk urgent advisories (no fabrication)
   const loadNotifications = useCallback(() => {
     const readIds = getReadNotifications();
     const settings = getNotificationSettings();
     const certInEnabled = localStorage.getItem(CERTIN_TOGGLE_KEY) !== 'false';
     
-    // Map Splunk notifications to Advisory format for display
-    const unreadNotifications = urgentNotifications
-      .filter((n) => {
+    // Filter urgent advisories based on user preferences
+    // Uses FULL Advisory objects from Splunk - no field fabrication
+    const unreadNotifications = urgentAdvisories
+      .filter((advisory) => {
         // Already read check
-        const isUnread = !readIds.includes(n.cve_id || n.civn_id || '');
+        const notificationId = advisory.cve_id || advisory.cvin_id || '';
+        const isUnread = !readIds.includes(notificationId);
         if (!isUnread) return false;
 
         // Check severity preference
-        const matchesSeverity = settings.severities.includes(n.severity);
+        const matchesSeverity = settings.severities.includes(advisory.Severity);
         
         // Check source preference (respecting CERT-In toggle)
-        const isCertIn = n.civn_id && n.civn_id.trim() !== '';
+        const isCertIn = advisory.cvin_id && advisory.cvin_id.trim() !== '';
         let matchesSource = false;
         
         if (settings.sources.includes('NVD') || settings.sources.includes('CVE')) {
-          if (n.cve_id && n.cve_id.startsWith('CVE-')) {
+          if (advisory.cve_id && advisory.cve_id.startsWith('CVE-')) {
             matchesSource = true;
           }
         }
@@ -107,28 +110,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         
         return matchesSeverity && matchesSource;
       })
-      .slice(0, 10)
-      .map((n): Advisory => ({
-        lastModified: n.lastModified,
-        cve_id: n.cve_id || n.civn_id || '',
-        Description: `Vulnerability in ${n.product}`,
-        cpe_value: '',
-        tech_stack_vendor: n.vendor,
-        tech_stack_product: n.product,
-        tech_stack_version: n.version,
-        match_status: 'Matched',
-        cvss_score: 0,
-        Severity: n.severity as 'Critical' | 'High' | 'Medium' | 'Low',
-        attack_vector: 'Network',
-        Vulnerability_Status: 'Active',
-        cvin_id: n.civn_id,
-        Reference_URL: n.cve_id ? `https://nvd.nist.gov/vuln/detail/${n.cve_id}` : '',
-        organization: '',
-        email_to: n.email_to,
-      }));
+      .slice(0, 10);
     
     setNotifications(unreadNotifications);
-  }, [urgentNotifications]);
+  }, [urgentAdvisories]);
 
   useEffect(() => {
     if (!notificationsLoading) {
@@ -138,7 +123,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const handleClearAll = () => {
     // Clear all current notifications as read
-    const currentIds = notifications.map(n => n.cve_id);
+    const currentIds = notifications.map(n => n.cve_id || n.cvin_id || '');
     const allReadIds = [...getReadNotifications(), ...currentIds];
     localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(allReadIds));
     setNotifications([]);
@@ -225,16 +210,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   ) : (
                     notifications.map((advisory) => (
                       <div
-                        key={advisory.cve_id}
+                        key={advisory.cve_id || advisory.cvin_id}
                         className="p-3 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer"
                         onClick={() => {
                           // Mark as read
-                          markNotificationAsRead(advisory.cve_id);
+                          const notificationId = advisory.cve_id || advisory.cvin_id || '';
+                          markNotificationAsRead(notificationId);
                           // Remove from local state
-                          setNotifications(prev => prev.filter(n => n.cve_id !== advisory.cve_id));
+                          setNotifications(prev => prev.filter(n => (n.cve_id || n.cvin_id) !== notificationId));
                           setIsNotificationOpen(false);
                           // Navigate to advisories with the CVE ID as search param
-                          navigate(`/advisories?cve=${advisory.cve_id}`);
+                          navigate(`/advisories?cve=${notificationId}`);
                         }}
                       >
                         <div className="flex items-start gap-3">
@@ -256,12 +242,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-mono text-xs font-semibold text-foreground">
-                                {advisory.cve_id}
+                                {advisory.cve_id || advisory.cvin_id}
                               </span>
                               <SeverityBadge severity={advisory.Severity} />
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {advisory.tech_stack_product}
+                            {/* Use real Description from Splunk - no fabrication */}
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {advisory.Description}
+                            </p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              {advisory.tech_stack_vendor} / {advisory.tech_stack_product}
                             </p>
                           </div>
                         </div>

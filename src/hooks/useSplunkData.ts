@@ -219,43 +219,19 @@ export const useSplunkDashboard = () => {
   };
 };
 
-// Notification-ready data hook
-export interface NotificationData {
-  id: string;
-  cve_id: string;
-  civn_id?: string;
-  severity: string;
-  lastModified: string;
-  vendor: string;
-  product: string;
-  version: string;
-  email_to: string;
-}
-
+// Hook for notifications - returns full Advisory objects (no fabrication)
 export const useSplunkNotifications = () => {
   const { advisories, isLoading } = useSplunkAdvisories();
 
-  // Transform advisories to notification-ready format
-  const notifications: NotificationData[] = advisories.map(a => ({
-    id: a.cve_id || a.cvin_id || '',
-    cve_id: a.cve_id,
-    civn_id: a.cvin_id,
-    severity: a.Severity,
-    lastModified: a.lastModified,
-    vendor: a.tech_stack_vendor,
-    product: a.tech_stack_product,
-    version: a.tech_stack_version,
-    email_to: a.email_to,
-  }));
-
-  // Critical and High severity for immediate notification
-  const urgentNotifications = notifications.filter(n => 
-    n.severity === 'Critical' || n.severity === 'High'
+  // Critical and High severity advisories for immediate notification
+  // Returns FULL Advisory objects - no field fabrication
+  const urgentAdvisories = advisories.filter(a => 
+    a.Severity === 'Critical' || a.Severity === 'High'
   );
 
   return {
-    notifications,
-    urgentNotifications,
+    advisories,
+    urgentAdvisories,
     isLoading,
   };
 };
