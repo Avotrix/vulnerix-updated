@@ -153,6 +153,9 @@ const LandingPage = () => {
             </motion.div>
           </div>
 
+          {/* Tech Stack Flow Diagram - Between CTA and Stats */}
+          <TechStackFlowDiagram />
+
           {/* Hero Visual */}
           <motion.div initial={{
             opacity: 0,
@@ -235,9 +238,6 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-
-      {/* Tech Stack Flow Diagram - Public Only */}
-      <TechStackFlowDiagram />
 
       {/* Features Section */}
       <section id="features" className="py-24">
