@@ -4,6 +4,7 @@ import { Shield, ShieldAlert, ShieldCheck, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
+import TechStackFlowDiagram from "@/components/landing/TechStackFlowDiagram";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 // Import client logos
@@ -234,6 +235,9 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Tech Stack Flow Diagram - Public Only */}
+      <TechStackFlowDiagram />
 
       {/* Features Section */}
       <section id="features" className="py-24">
