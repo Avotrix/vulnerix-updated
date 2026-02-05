@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Building2, Trash2, ExternalLink, HelpCircle } from "lucide-react";
+import { X, Plus, Trash2, ExternalLink, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ManualTechStackModalProps {
@@ -24,40 +17,6 @@ interface ManualTechStackModalProps {
     emails: string[];
   }) => void;
 }
-
-const STANDARD_VENDORS = [
-  "Adobe",
-  "Amazon Web Services",
-  "Apache",
-  "Apple",
-  "Atlassian",
-  "Cisco",
-  "Docker",
-  "Elastic",
-  "Fortinet",
-  "Google",
-  "HashiCorp",
-  "IBM",
-  "Jenkins",
-  "JetBrains",
-  "Kubernetes",
-  "Linux",
-  "Microsoft",
-  "MongoDB",
-  "MySQL",
-  "Nginx",
-  "Node.js",
-  "Oracle",
-  "PostgreSQL",
-  "Python",
-  "Red Hat",
-  "Salesforce",
-  "SAP",
-  "Slack",
-  "Splunk",
-  "Ubuntu",
-  "VMware",
-];
 
 const MAX_EMAILS = 5;
 
@@ -73,16 +32,13 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
   });
   const [emails, setEmails] = useState<string[]>([userEmail]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isCustomVendor, setIsCustomVendor] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    // Vendor validation - must exist in list or be a valid custom vendor
+    // Vendor validation
     if (!formData.vendorName.trim()) {
       newErrors.vendorName = 'Vendor name is required';
-    } else if (!isCustomVendor && !STANDARD_VENDORS.includes(formData.vendorName)) {
-      newErrors.vendorName = 'Please select a valid vendor or add a custom one';
     } else if (formData.vendorName.length < 2) {
       newErrors.vendorName = 'Vendor name must be at least 2 characters';
     }
@@ -139,22 +95,11 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
     });
     setEmails([userEmail]);
     setErrors({});
-    setIsCustomVendor(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
-  };
-
-  const handleVendorSelect = (value: string) => {
-    if (value === '__custom__') {
-      setIsCustomVendor(true);
-      setFormData(prev => ({ ...prev, vendorName: '' }));
-    } else {
-      setIsCustomVendor(false);
-      setFormData(prev => ({ ...prev, vendorName: value }));
-    }
   };
 
   const addEmailField = () => {
@@ -209,25 +154,27 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
           {/* Content */}
           <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* NVD CPE Guidance */}
-            <div className="p-3 rounded-lg bg-accent/10 border border-accent/30 text-sm">
+            {/* CPE Structure Reference */}
+            <div className="p-3 rounded-lg bg-muted border border-border text-sm space-y-2">
               <div className="flex items-start gap-2">
                 <HelpCircle className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-foreground">Find correct values from NVD CPE directory:</p>
-                  <a 
-                    href="https://nvd.nist.gov/products/cpe/search" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-accent hover:underline"
-                  >
-                    NVD CPE Search <ExternalLink className="h-3 w-3" />
-                  </a>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Example vendors: Microsoft, Google, Apache, Oracle, Cisco
-                  </p>
-                </div>
+                <p className="text-foreground font-medium">CPE Structure Reference:</p>
               </div>
+              <code className="block text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded font-mono">
+                cpe:2.3:type:vendor:product:version:update:edition:lang:sw_edition:target_sw:target_hw:other
+              </code>
+              <p className="text-xs">
+                <span className="text-foreground font-medium">Example:</span>{" "}
+                <code className="text-muted-foreground font-mono">cpe:2.3:a:google:chrome:9.0.597.7:*:*:*:*:*:*:*</code>
+              </p>
+              <a 
+                href="https://nvd.nist.gov/products/cpe/search" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-accent hover:underline text-xs"
+              >
+                Search NVD CPE Directory <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
 
             {/* Organization (auto-filled, read-only display) */}
@@ -240,53 +187,13 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
             <div className="space-y-2">
               <Label htmlFor="vendorName">Vendor Name</Label>
-              {!isCustomVendor ? (
-                <Select
-                  value={formData.vendorName || undefined}
-                  onValueChange={handleVendorSelect}
-                >
-                  <SelectTrigger className={errors.vendorName ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select a vendor" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 bg-card">
-                    {STANDARD_VENDORS.map((vendor) => (
-                      <SelectItem key={vendor} value={vendor}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          {vendor}
-                        </div>
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="__custom__">
-                      <div className="flex items-center gap-2 text-accent">
-                        <Plus className="h-4 w-4" />
-                        Add Custom Vendor
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    id="vendorName"
-                    placeholder="e.g., Microsoft, Google, Apache, Oracle"
-                    value={formData.vendorName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
-                    className={errors.vendorName ? 'border-destructive' : ''}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setIsCustomVendor(false);
-                      setFormData(prev => ({ ...prev, vendorName: '' }));
-                    }}
-                    className="text-xs text-muted-foreground"
-                  >
-                    ← Back to vendor list
-                  </Button>
-                </div>
-              )}
+              <Input
+                id="vendorName"
+                placeholder="e.g., google, microsoft, apache, oracle"
+                value={formData.vendorName}
+                onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
+                className={errors.vendorName ? 'border-destructive' : ''}
+              />
               {errors.vendorName && <p className="text-xs text-destructive">{errors.vendorName}</p>}
             </div>
 
