@@ -89,83 +89,85 @@ const Dashboard = () => {
     { name: "Low", value: filteredStats.low, fill: "hsl(142 71% 45%)" },
   ].filter(item => item.value > 0), [filteredStats]);
 
-  const trendChartData = useMemo(() => {
-    const monthlyData: Record<string, { critical: number; high: number; medium: number; low: number }> = {};
+  // Monthly vendor trend data - group CVEs by vendor per month
+  const vendorTrendData = useMemo(() => {
+    // First, find top vendors by total CVE count
+    const vendorTotals = new Map<string, number>();
     
     filteredAdvisories.forEach((advisory) => {
+      if (!advisory.cve_id || !advisory.cve_id.startsWith('CVE-')) return;
+      const vendor = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
+      vendorTotals.set(vendor, (vendorTotals.get(vendor) || 0) + 1);
+    });
+
+    // Get top 5 vendors
+    const topVendors = Array.from(vendorTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([vendor]) => vendor);
+
+    // Get vendor display names
+    const vendorDisplayNames = new Map<string, string>();
+    filteredAdvisories.forEach((advisory) => {
+      const vendorKey = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
+      if (!vendorDisplayNames.has(vendorKey)) {
+        const displayName = advisory.tech_stack_vendor?.trim() || 'Unknown Vendor';
+        vendorDisplayNames.set(vendorKey, displayName.split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' '));
+      }
+    });
+
+    // Group by month and vendor
+    const monthlyData: Record<string, Record<string, number>> = {};
+    
+    filteredAdvisories.forEach((advisory) => {
+      if (!advisory.cve_id || !advisory.cve_id.startsWith('CVE-')) return;
+      
       const date = new Date(advisory.lastModified);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const vendor = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
+      
+      if (!topVendors.includes(vendor)) return;
       
       if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { critical: 0, high: 0, medium: 0, low: 0 };
+        monthlyData[monthKey] = {};
+        topVendors.forEach(v => monthlyData[monthKey][v] = 0);
       }
       
-      const severity = advisory.Severity.toLowerCase() as keyof typeof monthlyData[typeof monthKey];
-      if (severity in monthlyData[monthKey]) {
-        monthlyData[monthKey][severity]++;
-      }
+      monthlyData[monthKey][vendor]++;
     });
 
-    return Object.entries(monthlyData)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-6)
-      .map(([month, data]) => ({
-        month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
-        ...data,
-      }));
+    return {
+      data: Object.entries(monthlyData)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-6)
+        .map(([month, vendors]) => ({
+          month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
+          ...Object.fromEntries(
+            topVendors.map(v => [vendorDisplayNames.get(v) || v, vendors[v] || 0])
+          ),
+        })),
+      topVendors: topVendors.map(v => vendorDisplayNames.get(v) || v),
+    };
   }, [filteredAdvisories]);
 
-  // Vendor trend data - group CVEs by vendor
-  const vendorTrendData = useMemo(() => {
-    const vendorMap = new Map<string, number>();
-    
-    filteredAdvisories.forEach((advisory) => {
-      // Only count CVE entries
-      if (!advisory.cve_id || !advisory.cve_id.startsWith('CVE-')) return;
-      
-      // Normalize vendor name
-      const vendor = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
-      const displayVendor = advisory.tech_stack_vendor?.trim() || 'Unknown Vendor';
-      
-      // Use lowercase for grouping but store display name
-      const existing = vendorMap.get(vendor) || 0;
-      vendorMap.set(vendor, existing + 1);
+  // Vendor colors for the chart
+  const vendorColors = [
+    "hsl(220 70% 50%)",  // Blue
+    "hsl(142 71% 45%)",  // Green
+    "hsl(25 95% 53%)",   // Orange
+    "hsl(280 65% 60%)",  // Purple
+    "hsl(45 93% 47%)",   // Yellow
+  ];
+
+  const vendorChartConfig = useMemo(() => {
+    const config: Record<string, { label: string; color: string }> = {};
+    vendorTrendData.topVendors.forEach((vendor, index) => {
+      config[vendor] = { label: vendor, color: vendorColors[index % vendorColors.length] };
     });
-
-    // Convert to array with proper display names and sort
-    const vendorCounts: { vendor: string; count: number }[] = [];
-    const processedVendors = new Set<string>();
-    
-    filteredAdvisories.forEach((advisory) => {
-      if (!advisory.cve_id || !advisory.cve_id.startsWith('CVE-')) return;
-      
-      const vendorKey = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
-      if (processedVendors.has(vendorKey)) return;
-      processedVendors.add(vendorKey);
-      
-      const count = vendorMap.get(vendorKey) || 0;
-      const displayVendor = advisory.tech_stack_vendor?.trim() || 'Unknown Vendor';
-      
-      // Capitalize first letter of each word for display
-      const formattedVendor = displayVendor.split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
-      
-      vendorCounts.push({ vendor: formattedVendor, count });
-    });
-
-    // Sort by count descending and take top 8
-    return vendorCounts
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-  }, [filteredAdvisories]);
-
-  const chartConfig = {
-    critical: { label: "Critical", color: "hsl(0 84% 60%)" },
-    high: { label: "High", color: "hsl(25 95% 53%)" },
-    medium: { label: "Medium", color: "hsl(45 93% 47%)" },
-    low: { label: "Low", color: "hsl(142 71% 45%)" },
-  };
+    return config;
+  }, [vendorTrendData.topVendors]);
 
   const pieChartConfig = {
     Critical: { label: "Critical", color: "hsl(0 84% 60%)" },
@@ -300,49 +302,6 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Trending Vulnerabilities by Vendor */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-xl border border-border p-6"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <h2 className="text-lg font-display font-semibold text-foreground">Trending Vulnerabilities by Vendor</h2>
-              <p className="text-sm text-muted-foreground">Top vendors by CVE count</p>
-            </div>
-          </div>
-          
-          {vendorTrendData.length > 0 ? (
-            <div className="space-y-3">
-              {vendorTrendData.map((item, index) => (
-                <div key={item.vendor} className="flex items-center gap-3">
-                  <span className="w-28 text-sm font-medium text-foreground truncate" title={item.vendor}>
-                    {item.vendor}
-                  </span>
-                  <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-accent rounded-full transition-all duration-500"
-                      style={{ width: `${(item.count / vendorTrendData[0].count) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-20 text-sm text-muted-foreground text-right">
-                    {item.count} CVEs
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No CVE trend data available yet</p>
-            </div>
-          )}
-        </motion.div>
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -394,7 +353,7 @@ const Dashboard = () => {
             </div>
           </motion.div>
 
-          {/* Vulnerability Trend Chart */}
+          {/* Vulnerability Trend Chart - By Vendor */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -402,18 +361,18 @@ const Dashboard = () => {
             className="bg-card rounded-xl border border-border overflow-hidden"
           >
             <div className="flex items-center gap-3 p-6 border-b border-border">
-              <div className="h-10 w-10 rounded-lg bg-severity-high/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-severity-high" />
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-accent" />
               </div>
               <div>
                 <h2 className="text-lg font-display font-semibold text-foreground">Vulnerability Trends</h2>
-                <p className="text-sm text-muted-foreground">Monthly vulnerability distribution</p>
+                <p className="text-sm text-muted-foreground">Monthly CVE distribution by vendor</p>
               </div>
             </div>
             <div className="p-6">
-              {trendChartData.length > 0 ? (
-                <ChartContainer config={chartConfig} className="h-[280px] w-full">
-                  <AreaChart data={trendChartData}>
+              {vendorTrendData.data.length > 0 ? (
+                <ChartContainer config={vendorChartConfig} className="h-[280px] w-full">
+                  <AreaChart data={vendorTrendData.data}>
                     <XAxis 
                       dataKey="month" 
                       stroke="hsl(var(--muted-foreground))" 
@@ -428,40 +387,25 @@ const Dashboard = () => {
                       axisLine={false}
                     />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area
-                      type="monotone"
-                      dataKey="critical"
-                      stackId="1"
-                      stroke="hsl(0 84% 60%)"
-                      fill="hsl(0 84% 60% / 0.6)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="high"
-                      stackId="1"
-                      stroke="hsl(25 95% 53%)"
-                      fill="hsl(25 95% 53% / 0.6)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="medium"
-                      stackId="1"
-                      stroke="hsl(45 93% 47%)"
-                      fill="hsl(45 93% 47% / 0.6)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="low"
-                      stackId="1"
-                      stroke="hsl(142 71% 45%)"
-                      fill="hsl(142 71% 45% / 0.6)"
-                    />
+                    {vendorTrendData.topVendors.map((vendor, index) => (
+                      <Area
+                        key={vendor}
+                        type="monotone"
+                        dataKey={vendor}
+                        stackId="1"
+                        stroke={vendorColors[index % vendorColors.length]}
+                        fill={`${vendorColors[index % vendorColors.length].replace(')', ' / 0.6)')}`}
+                      />
+                    ))}
                     <ChartLegend content={<ChartLegendContent />} />
                   </AreaChart>
                 </ChartContainer>
               ) : (
                 <div className="h-[280px] flex items-center justify-center text-muted-foreground">
-                  No trend data available
+                  <div className="text-center">
+                    <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No CVE trend data available yet</p>
+                  </div>
                 </div>
               )}
             </div>
