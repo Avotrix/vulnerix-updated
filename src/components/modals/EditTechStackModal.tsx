@@ -214,7 +214,7 @@ const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechSt
                 <div className="space-y-2">
                   <Input
                     id="vendorName"
-                    placeholder="Enter custom vendor name"
+                    placeholder="e.g., Microsoft, Google, Apache, Oracle"
                     value={formData.vendorName}
                     onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
                     className={errors.vendorName ? 'border-destructive' : ''}

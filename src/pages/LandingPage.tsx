@@ -225,13 +225,13 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex items-center justify-center p-4 rounded-xl bg-card border border-border min-w-[140px] h-[80px]"
+                className="flex items-center justify-center p-4 rounded-xl bg-white border border-border min-w-[140px] h-[80px]"
                 title={client.name}
               >
                 <img 
                   src={client.logo} 
                   alt={`${client.name} logo`}
-                  className="max-h-12 max-w-[120px] object-contain filter dark:brightness-110 dark:contrast-110"
+                  className="max-h-12 max-w-[120px] object-contain"
                 />
               </motion.div>
             ))}

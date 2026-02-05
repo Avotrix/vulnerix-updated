@@ -173,20 +173,20 @@ const DemoTour = forwardRef<HTMLDivElement, DemoTourProps>(({ isOpen, onClose },
             </div>
 
             {/* Content - Scrollable */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
-              <p className="text-muted-foreground leading-relaxed mb-6">
+            <div className="p-6 max-h-[60vh] overflow-y-auto bg-card">
+              <p className="text-foreground leading-relaxed mb-6">
                 {step.description}
               </p>
 
               {/* Features List */}
-              <div className="bg-muted/50 rounded-xl p-4 border border-border mb-6">
+              <div className="bg-muted rounded-xl p-4 border border-border mb-6">
                 <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                   Key Features & Options
                 </h4>
                 <ul className="space-y-2">
                   {step.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <li key={index} className="flex items-start gap-2 text-sm text-foreground">
                       <ChevronRight className="h-4 w-4 text-accent shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>

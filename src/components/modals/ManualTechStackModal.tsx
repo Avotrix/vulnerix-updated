@@ -223,6 +223,9 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                   >
                     NVD CPE Search <ExternalLink className="h-3 w-3" />
                   </a>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Example vendors: Microsoft, Google, Apache, Oracle, Cisco
+                  </p>
                 </div>
               </div>
             </div>
@@ -266,7 +269,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                 <div className="space-y-2">
                   <Input
                     id="vendorName"
-                    placeholder="Enter custom vendor name"
+                    placeholder="e.g., Microsoft, Google, Apache, Oracle"
                     value={formData.vendorName}
                     onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
                     className={errors.vendorName ? 'border-destructive' : ''}
