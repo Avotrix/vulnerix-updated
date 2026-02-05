@@ -214,7 +214,7 @@ const LandingPage = () => {
             opacity: 1
           }} viewport={{
             once: true
-          }} className="text-center text-sm font-medium text-muted-foreground mb-8">
+          }} className="text-center text-sm font-medium text-foreground mb-8">
             TRUSTED BY OUR CLIENTS
           </motion.p>
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
@@ -300,10 +300,10 @@ const LandingPage = () => {
           }} viewport={{
             once: true
           }} className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-4xl font-display font-bold text-primary-foreground mb-4">
+            <h2 className="text-4xl font-display font-bold text-white mb-4">
               Trusted by Security Leaders
             </h2>
-            <p className="text-lg text-primary-foreground/70">
+            <p className="text-lg text-white/80">
               See what our customers say about Vulnerix
             </p>
           </motion.div>
@@ -381,7 +381,7 @@ const LandingPage = () => {
               <span className="text-xl font-display font-bold text-foreground">Vulnerix</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Vulnerix. All rights reserved.
+              © 2026 Vulnerix. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy</a>

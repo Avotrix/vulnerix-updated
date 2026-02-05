@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Building2 } from "lucide-react";
+import { X, Plus, Building2, Trash2, ExternalLink, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ManualTechStackModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ interface ManualTechStackModalProps {
     vendorName: string;
     productName: string;
     productVersion: string;
-    emailId: string;
+    emails: string[];
   }) => void;
 }
 
@@ -33,6 +34,7 @@ const STANDARD_VENDORS = [
   "Cisco",
   "Docker",
   "Elastic",
+  "Fortinet",
   "Google",
   "HashiCorp",
   "IBM",
@@ -57,23 +59,24 @@ const STANDARD_VENDORS = [
   "VMware",
 ];
 
+const MAX_EMAILS = 5;
+
 const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModalProps) => {
+  const { user } = useAuth();
+  const userEmail = user?.email || '';
+  const userOrganization = user?.user_metadata?.organization || 'Default Organization';
+
   const [formData, setFormData] = useState({
-    organization: '',
     vendorName: '',
     productName: '',
     productVersion: '',
-    emailId: ''
   });
+  const [emails, setEmails] = useState<string[]>([userEmail]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCustomVendor, setIsCustomVendor] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
-    if (!formData.organization.trim()) {
-      newErrors.organization = 'Organization is required';
-    }
     
     // Vendor validation - must exist in list or be a valid custom vendor
     if (!formData.vendorName.trim()) {
@@ -101,11 +104,10 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
       }
     }
     
-    // Email validation
-    if (!formData.emailId.trim()) {
-      newErrors.emailId = 'Email is required for notifications';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailId)) {
-      newErrors.emailId = 'Invalid email format';
+    // Email validation - at least one valid email
+    const validEmails = emails.filter(e => e.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (validEmails.length === 0) {
+      newErrors.emails = 'At least one valid email is required';
     }
     
     setErrors(newErrors);
@@ -114,29 +116,34 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
   const handleSubmit = () => {
     if (validateForm()) {
-      onSubmit(formData);
-      setFormData({
-        organization: '',
-        vendorName: '',
-        productName: '',
-        productVersion: '',
-        emailId: ''
+      // Filter valid emails
+      const validEmails = emails.filter(e => e.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      
+      onSubmit({
+        organization: userOrganization,
+        vendorName: formData.vendorName,
+        productName: formData.productName,
+        productVersion: formData.productVersion,
+        emails: validEmails.length > 0 ? validEmails : [userEmail]
       });
-      setIsCustomVendor(false);
+      resetForm();
       onClose();
     }
   };
 
-  const handleClose = () => {
+  const resetForm = () => {
     setFormData({
-      organization: '',
       vendorName: '',
       productName: '',
       productVersion: '',
-      emailId: ''
     });
+    setEmails([userEmail]);
     setErrors({});
     setIsCustomVendor(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
@@ -148,6 +155,22 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
       setIsCustomVendor(false);
       setFormData(prev => ({ ...prev, vendorName: value }));
     }
+  };
+
+  const addEmailField = () => {
+    if (emails.length < MAX_EMAILS) {
+      setEmails(prev => [...prev, '']);
+    }
+  };
+
+  const removeEmailField = (index: number) => {
+    if (emails.length > 1) {
+      setEmails(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateEmail = (index: number, value: string) => {
+    setEmails(prev => prev.map((email, i) => i === index ? value : email));
   };
 
   if (!isOpen) return null;
@@ -175,7 +198,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                 <Plus className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <h2 className="text-xl font-display font-semibold text-navy">Add Tech Stack</h2>
+                <h2 className="text-xl font-display font-semibold text-foreground">Add Tech Stack</h2>
                 <p className="text-sm text-muted-foreground">Add a product manually</p>
               </div>
             </div>
@@ -186,16 +209,30 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
           {/* Content */}
           <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* NVD CPE Guidance */}
+            <div className="p-3 rounded-lg bg-accent/10 border border-accent/30 text-sm">
+              <div className="flex items-start gap-2">
+                <HelpCircle className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-foreground">Find correct values from NVD CPE directory:</p>
+                  <a 
+                    href="https://nvd.nist.gov/products/cpe/search" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-accent hover:underline"
+                  >
+                    NVD CPE Search <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Organization (auto-filled, read-only display) */}
             <div className="space-y-2">
-              <Label htmlFor="organization">Organization</Label>
-              <Input
-                id="organization"
-                placeholder="Enter organization name"
-                value={formData.organization}
-                onChange={(e) => setFormData(prev => ({ ...prev, organization: e.target.value }))}
-                className={errors.organization ? 'border-destructive' : ''}
-              />
-              {errors.organization && <p className="text-xs text-destructive">{errors.organization}</p>}
+              <Label className="text-muted-foreground">Organization</Label>
+              <div className="px-3 py-2 rounded-md bg-muted/50 border border-border text-foreground text-sm">
+                {userOrganization}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -254,7 +291,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
               <Label htmlFor="productName">Product Name</Label>
               <Input
                 id="productName"
-                placeholder="e.g., Log4j, SQL Server"
+                placeholder="e.g., FortiOS, SQL Server"
                 value={formData.productName}
                 onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
                 className={errors.productName ? 'border-destructive' : ''}
@@ -266,7 +303,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
               <Label htmlFor="productVersion">Version</Label>
               <Input
                 id="productVersion"
-                placeholder="e.g., 2.14.1"
+                placeholder="e.g., 7.6.4"
                 value={formData.productVersion}
                 onChange={(e) => setFormData(prev => ({ ...prev, productVersion: e.target.value }))}
                 className={errors.productVersion ? 'border-destructive' : ''}
@@ -274,17 +311,53 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
               {errors.productVersion && <p className="text-xs text-destructive">{errors.productVersion}</p>}
             </div>
 
+            {/* Email Fields */}
             <div className="space-y-2">
-              <Label htmlFor="emailId">Email ID</Label>
-              <Input
-                id="emailId"
-                type="email"
-                placeholder="security@company.com"
-                value={formData.emailId}
-                onChange={(e) => setFormData(prev => ({ ...prev, emailId: e.target.value }))}
-                className={errors.emailId ? 'border-destructive' : ''}
-              />
-              {errors.emailId && <p className="text-xs text-destructive">{errors.emailId}</p>}
+              <div className="flex items-center justify-between">
+                <Label>Email ID(s)</Label>
+                {emails.length < MAX_EMAILS && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addEmailField}
+                    className="text-xs text-accent"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Email
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                {emails.map((email, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      placeholder={index === 0 ? userEmail : "additional@email.com"}
+                      value={email}
+                      onChange={(e) => updateEmail(index, e.target.value)}
+                      className="flex-1"
+                    />
+                    {emails.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEmailField(index)}
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {errors.emails && <p className="text-xs text-destructive">{errors.emails}</p>}
+              <p className="text-xs text-muted-foreground">
+                Max {MAX_EMAILS} emails. Leave blank to use your registered email.
+              </p>
             </div>
           </div>
 
