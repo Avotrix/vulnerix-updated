@@ -53,7 +53,7 @@ const defaultSettings: SettingsData = {
 };
 
 const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
-const SOURCE_OPTIONS = ['CVE', 'CERT-In', 'NVD'];
+// NVD/CVE always ON internally - only CERT-In is user-toggleable
 
 const Settings = () => {
   const { toast } = useToast();
@@ -344,26 +344,26 @@ const Settings = () => {
               </div>
             </div>
 
-            {/* Source Multi-Select */}
+            {/* CERT-In Toggle - NVD/CVE always ON internally */}
             <div className="pt-4 border-t border-border">
-              <Label className="text-base mb-3 block">Notify from Sources</Label>
-              <div className="flex flex-wrap gap-3">
-                {SOURCE_OPTIONS.map((source) => (
-                  <label
-                    key={source}
-                    className={`flex items-center gap-2 ${source === 'NVD' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
-                  >
-                    <Checkbox
-                      checked={settings.notificationSources.includes(source) || source === 'NVD'}
-                      onCheckedChange={() => toggleSource(source)}
-                      disabled={source === 'NVD'}
-                    />
-                    <span className="text-sm font-medium">
-                      {source}
-                      {source === 'NVD' && <span className="text-xs text-muted-foreground ml-1">(Always On)</span>}
-                    </span>
-                  </label>
-                ))}
+              <Label className="text-base mb-3 block">Advisory Sources</Label>
+              <p className="text-sm text-muted-foreground mb-4">
+                NVD/CVE advisories are always enabled. Toggle CERT-In notifications below.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 cursor-not-allowed opacity-70">
+                  <Checkbox checked={true} disabled />
+                  <span className="text-sm font-medium">
+                    NVD/CVE <span className="text-xs text-muted-foreground ml-1">(Always On)</span>
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={settings.notificationSources.includes('CERT-In')}
+                    onCheckedChange={() => toggleSource('CERT-In')}
+                  />
+                  <span className="text-sm font-medium">CERT-In Advisories</span>
+                </label>
               </div>
             </div>
           </div>

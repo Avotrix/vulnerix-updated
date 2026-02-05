@@ -48,10 +48,10 @@ export interface User {
   isNewUser: boolean;
 }
 
-// Sample template data for downloads only
+// Sample template data for downloads only (new format)
 export const sampleTemplateData = [
-  { "Sr No.": 1, "Vendor Name": "Apache", "Product Name": "Log4j", "Product Version": "2.14.1", "Email ID": "security@example.com" },
-  { "Sr No.": 2, "Vendor Name": "Oracle", "Product Name": "MySQL", "Product Version": "8.0.28", "Email ID": "admin@example.com" },
+  { email_to: "security@example.com, admin@example.com", organization: "Your Organization", product: "FortiOS", vendor: "Fortinet", version: "7.6.4" },
+  { email_to: "", organization: "Your Organization", product: "Acrobat", vendor: "Adobe", version: "3.1" },
 ];
 
 // Legacy mapper removed - all advisories now come from Splunk via useSplunkAdvisories hook

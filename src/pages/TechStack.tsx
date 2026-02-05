@@ -103,24 +103,27 @@ const TechStack = () => {
     }
   };
 
-  const handleManualAdd = async (data: { organization: string; vendorName: string; productName: string; productVersion: string; emailId: string }) => {
+  const handleManualAdd = async (data: { organization: string; vendorName: string; productName: string; productVersion: string; emails: string[] }) => {
     if (!user?.email) return;
 
     try {
-      await addTechStack({
-        vendor: data.vendorName,
-        product_name: data.productName,
-        version: data.productVersion,
-        org_name: settings?.org_name || data.organization,
-        email_id: user.email
-      });
+      // Insert one entry per email
+      for (const email of data.emails) {
+        await addTechStack({
+          vendor: data.vendorName,
+          product_name: data.productName,
+          version: data.productVersion,
+          org_name: user?.user_metadata?.organization || data.organization,
+          email_id: email
+        });
+      }
       
       // Trigger CVE engine in background after adding
       triggerEngineBackground();
       
       toast({
         title: "Product added",
-        description: "The product has been added to your tech stack.",
+        description: `The product has been added to your tech stack${data.emails.length > 1 ? ` for ${data.emails.length} emails` : ''}.`,
       });
     } catch (err: any) {
       toast({
