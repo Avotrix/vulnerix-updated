@@ -115,6 +115,51 @@ const Dashboard = () => {
       }));
   }, [filteredAdvisories]);
 
+  // Vendor trend data - group CVEs by vendor
+  const vendorTrendData = useMemo(() => {
+    const vendorMap = new Map<string, number>();
+    
+    filteredAdvisories.forEach((advisory) => {
+      // Only count CVE entries
+      if (!advisory.cve_id || !advisory.cve_id.startsWith('CVE-')) return;
+      
+      // Normalize vendor name
+      const vendor = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
+      const displayVendor = advisory.tech_stack_vendor?.trim() || 'Unknown Vendor';
+      
+      // Use lowercase for grouping but store display name
+      const existing = vendorMap.get(vendor) || 0;
+      vendorMap.set(vendor, existing + 1);
+    });
+
+    // Convert to array with proper display names and sort
+    const vendorCounts: { vendor: string; count: number }[] = [];
+    const processedVendors = new Set<string>();
+    
+    filteredAdvisories.forEach((advisory) => {
+      if (!advisory.cve_id || !advisory.cve_id.startsWith('CVE-')) return;
+      
+      const vendorKey = (advisory.tech_stack_vendor || 'Unknown Vendor').trim().toLowerCase();
+      if (processedVendors.has(vendorKey)) return;
+      processedVendors.add(vendorKey);
+      
+      const count = vendorMap.get(vendorKey) || 0;
+      const displayVendor = advisory.tech_stack_vendor?.trim() || 'Unknown Vendor';
+      
+      // Capitalize first letter of each word for display
+      const formattedVendor = displayVendor.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      vendorCounts.push({ vendor: formattedVendor, count });
+    });
+
+    // Sort by count descending and take top 8
+    return vendorCounts
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [filteredAdvisories]);
+
   const chartConfig = {
     critical: { label: "Critical", color: "hsl(0 84% 60%)" },
     high: { label: "High", color: "hsl(25 95% 53%)" },
@@ -255,27 +300,48 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Trending Vulnerabilities - Coming Soon */}
+        {/* Trending Vulnerabilities by Vendor */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="bg-card rounded-xl border border-border p-6"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="text-lg font-display font-semibold text-foreground">Trending Vulnerabilities</h2>
-                <p className="text-sm text-muted-foreground">Real-time trending threats</p>
-              </div>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-accent" />
             </div>
-            <span className="px-3 py-1 bg-muted rounded-full text-xs font-medium text-muted-foreground">
-              Coming Soon
-            </span>
+            <div>
+              <h2 className="text-lg font-display font-semibold text-foreground">Trending Vulnerabilities by Vendor</h2>
+              <p className="text-sm text-muted-foreground">Top vendors by CVE count</p>
+            </div>
           </div>
+          
+          {vendorTrendData.length > 0 ? (
+            <div className="space-y-3">
+              {vendorTrendData.map((item, index) => (
+                <div key={item.vendor} className="flex items-center gap-3">
+                  <span className="w-28 text-sm font-medium text-foreground truncate" title={item.vendor}>
+                    {item.vendor}
+                  </span>
+                  <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-accent rounded-full transition-all duration-500"
+                      style={{ width: `${(item.count / vendorTrendData[0].count) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-20 text-sm text-muted-foreground text-right">
+                    {item.count} CVEs
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No CVE trend data available yet</p>
+            </div>
+          )}
         </motion.div>
 
         {/* Charts Section */}
