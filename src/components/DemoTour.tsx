@@ -149,7 +149,7 @@ const DemoTour = forwardRef<HTMLDivElement, DemoTourProps>(({ isOpen, onClose },
             <div className="relative bg-navy-gradient p-6">
               <button
                 onClick={handleSkip}
-                className="absolute top-4 right-4 text-primary-foreground/60 hover:text-primary-foreground transition-colors"
+                className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -165,7 +165,7 @@ const DemoTour = forwardRef<HTMLDivElement, DemoTourProps>(({ isOpen, onClose },
                       Step {currentStep + 1} of {demoSteps.length}
                     </p>
                   </div>
-                  <h3 className="text-xl font-display font-bold text-primary-foreground">
+                  <h3 className="text-xl font-display font-bold text-white">
                     {step.title}
                   </h3>
                 </div>
