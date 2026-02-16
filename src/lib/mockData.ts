@@ -36,6 +36,7 @@ export interface TechStack {
   productName: string;
   productVersion: string;
   emailId: string;
+  emailList?: string;
   uploadedAt: string;
 }
 
@@ -65,5 +66,6 @@ export const mapDbTechStack = (row: any, index: number): TechStack => ({
   productName: row.product_name,
   productVersion: row.version || '',
   emailId: row.email_id,
+  emailList: row.email_list || row.email_id,
   uploadedAt: row.created_at || new Date().toISOString()
 });
