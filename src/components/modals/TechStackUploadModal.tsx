@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTechStacks } from "@/hooks/useSupabaseData";
 import { useCVEEngine } from "@/hooks/useCVEEngine";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import {
   Tooltip,
   TooltipContent,
@@ -112,10 +112,25 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
         rawData = result.data;
       } else if (extension === 'xlsx' || extension === 'xls') {
         const buffer = await selectedFile.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        rawData = XLSX.utils.sheet_to_json(firstSheet) as any[];
-        if (rawData.length > 0) headers = Object.keys(rawData[0]);
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet || worksheet.rowCount === 0) {
+          setError("Empty spreadsheet");
+          return;
+        }
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell((cell, colNumber) => {
+          headers.push(String(cell.value ?? ''));
+        });
+        for (let r = 2; r <= worksheet.rowCount; r++) {
+          const row = worksheet.getRow(r);
+          const obj: any = {};
+          headers.forEach((h, idx) => {
+            obj[h] = row.getCell(idx + 1).value != null ? String(row.getCell(idx + 1).value) : '';
+          });
+          rawData.push(obj);
+        }
       } else {
         setError("Unsupported file format. Please upload CSV, XLS, or XLSX file.");
         return;
@@ -146,17 +161,28 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const newTemplateData = [
-      { email_to: "security@example.com, admin@example.com", organization: "Your Organization", product: "FortiOS", vendor: "Fortinet", version: "7.6.4" },
-      { email_to: "", organization: "Your Organization", product: "Acrobat", vendor: "Adobe", version: "3.1" },
+  const handleDownloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet("Template");
+    ws.columns = [
+      { header: "email_to", key: "email_to", width: 40 },
+      { header: "organization", key: "organization", width: 25 },
+      { header: "product", key: "product", width: 20 },
+      { header: "vendor", key: "vendor", width: 20 },
+      { header: "version", key: "version", width: 15 },
     ];
-    
-    const ws = XLSX.utils.json_to_sheet(newTemplateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "tech_stack_template.xlsx");
-    
+    ws.addRow({ email_to: "security@example.com, admin@example.com", organization: "Your Organization", product: "FortiOS", vendor: "Fortinet", version: "7.6.4" });
+    ws.addRow({ email_to: "", organization: "Your Organization", product: "Acrobat", vendor: "Adobe", version: "3.1" });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tech_stack_template.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+
     toast({
       title: "Template downloaded",
       description: "Fill in your tech stack data and upload.",
