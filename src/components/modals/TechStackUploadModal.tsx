@@ -32,11 +32,6 @@ interface ParsedRow {
   email_to?: string;
 }
 
-// New expected headers matching Sample_Tech_Stack.xlsx format
-const EXPECTED_HEADERS = ["email_to", "organization", "product", "vendor", "version"];
-// Also support legacy format
-const LEGACY_HEADERS = ["Sr No.", "Vendor Name", "Product Name", "Product Version", "Email ID"];
-
 const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -45,15 +40,14 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
   
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
+  const [skippedRows, setSkippedRows] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Get organization from user metadata
   const userOrganization = user?.user_metadata?.organization || 'Default Organization';
   const userEmail = user?.email || '';
 
-  // Filter parsed data based on search query (vendor and product name)
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) return parsedData;
     const query = searchQuery.toLowerCase();
@@ -64,54 +58,35 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     );
   }, [parsedData, searchQuery]);
 
-  const validateHeaders = (headers: string[]): 'new' | 'legacy' | null => {
-    const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
-    
-    // Check for new format (from Sample_Tech_Stack.xlsx)
-    const newFormatMatch = ['vendor', 'product', 'version'].every(expected => 
-      normalizedHeaders.some(h => h === expected)
-    );
-    if (newFormatMatch) return 'new';
-    
-    // Check for legacy format
-    const legacyMatch = ['vendor name', 'product name', 'product version'].every(expected => 
-      normalizedHeaders.some(h => h === expected)
-    );
-    if (legacyMatch) return 'legacy';
-    
+  // Case-insensitive header matching
+  const findHeader = (headers: string[], candidates: string[]): string | null => {
+    for (const h of headers) {
+      const normalized = h.trim().toLowerCase();
+      if (candidates.includes(normalized)) return h;
+    }
     return null;
   };
 
-  const normalizeRow = (row: any, format: 'new' | 'legacy'): ParsedRow => {
-    if (format === 'new') {
-      return {
-        vendor: row.vendor || '',
-        product: row.product || '',
-        version: row.version || '',
-        email_to: row.email_to || ''
-      };
-    }
-    // Legacy format
-    return {
-      vendor: row["Vendor Name"] || '',
-      product: row["Product Name"] || '',
-      version: row["Product Version"] || '',
-      email_to: row["Email ID"] || ''
-    };
+  const validateAndMapHeaders = (headers: string[]): { vendorKey: string; productKey: string; versionKey: string; emailKey: string | null } | null => {
+    const vendorKey = findHeader(headers, ['vendor', 'vendor name', 'vendor_name']);
+    const productKey = findHeader(headers, ['product', 'product name', 'product_name']);
+    const versionKey = findHeader(headers, ['version', 'product version', 'product_version']);
+    const emailKey = findHeader(headers, ['email', 'email_to', 'email_ids', 'email id', 'email_id', 'emails']);
+
+    if (!vendorKey || !productKey || !versionKey) return null;
+    return { vendorKey, productKey, versionKey, emailKey };
   };
 
-  // Parse comma-separated emails and return array, fallback to user email if empty
-  const parseEmails = (emailString: string | undefined): string[] => {
-    if (!emailString || emailString.trim() === '') {
-      return [userEmail];
-    }
-    
-    const emails = emailString
-      .split(',')
-      .map(e => e.trim())
-      .filter(e => e.length > 0 && e.includes('@'));
-    
-    return emails.length > 0 ? emails : [userEmail];
+  const normalizeRow = (row: any, keys: { vendorKey: string; productKey: string; versionKey: string; emailKey: string | null }): ParsedRow | null => {
+    const vendor = (row[keys.vendorKey] || '').toString().trim();
+    const product = (row[keys.productKey] || '').toString().trim();
+    const version = (row[keys.versionKey] || '').toString().trim();
+    const email = keys.emailKey ? (row[keys.emailKey] || '').toString().trim() : '';
+
+    // Skip invalid rows: vendor, product, version are required
+    if (!vendor || !product || !version) return null;
+
+    return { vendor, product, version, email_to: email };
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,59 +95,58 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
 
     setError(null);
     setFile(selectedFile);
+    setSkippedRows(0);
 
     const extension = selectedFile.name.split('.').pop()?.toLowerCase();
 
     try {
+      let rawData: any[] = [];
+      let headers: string[] = [];
+
       if (extension === 'csv') {
-        // Parse CSV
         const text = await selectedFile.text();
-        Papa.parse(text, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const headers = results.meta.fields || [];
-            const format = validateHeaders(headers);
-            if (!format) {
-              setError("Invalid file format. Required columns: vendor, product, version (and optionally email_to)");
-              setParsedData([]);
-              return;
-            }
-            const normalized = (results.data as any[]).map(row => normalizeRow(row, format));
-            setParsedData(normalized);
-          },
-          error: () => {
-            setError("Failed to parse CSV file");
-          }
+        const result = await new Promise<Papa.ParseResult<any>>((resolve) => {
+          Papa.parse(text, { header: true, skipEmptyLines: true, complete: resolve });
         });
+        headers = result.meta.fields || [];
+        rawData = result.data;
       } else if (extension === 'xlsx' || extension === 'xls') {
-        // Parse Excel
         const buffer = await selectedFile.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet) as any[];
-        
-        if (jsonData.length > 0) {
-          const headers = Object.keys(jsonData[0]);
-          const format = validateHeaders(headers);
-          if (!format) {
-            setError("Invalid file format. Required columns: vendor, product, version (and optionally email_to)");
-            setParsedData([]);
-            return;
-          }
-          const normalized = jsonData.map(row => normalizeRow(row, format));
-          setParsedData(normalized);
-        }
+        rawData = XLSX.utils.sheet_to_json(firstSheet) as any[];
+        if (rawData.length > 0) headers = Object.keys(rawData[0]);
       } else {
-        setError("Unsupported file format. Please upload CSV or Excel file.");
+        setError("Unsupported file format. Please upload CSV, XLS, or XLSX file.");
+        return;
       }
+
+      const keys = validateAndMapHeaders(headers);
+      if (!keys) {
+        setError("Invalid file format. Required columns: Vendor, Product, Version (and optionally Email/Email_IDs). Column names are case-insensitive.");
+        setParsedData([]);
+        return;
+      }
+
+      let skipped = 0;
+      const normalized: ParsedRow[] = [];
+      rawData.forEach((row) => {
+        const parsed = normalizeRow(row, keys);
+        if (parsed) {
+          normalized.push(parsed);
+        } else {
+          skipped++;
+        }
+      });
+
+      setSkippedRows(skipped);
+      setParsedData(normalized);
     } catch (err) {
       setError("Failed to read file");
     }
   };
 
   const handleDownloadTemplate = () => {
-    // New template format
     const newTemplateData = [
       { email_to: "security@example.com, admin@example.com", organization: "Your Organization", product: "FortiOS", vendor: "Fortinet", version: "7.6.4" },
       { email_to: "", organization: "Your Organization", product: "Acrobat", vendor: "Adobe", version: "3.1" },
@@ -203,33 +177,22 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     setIsUploading(true);
 
     try {
-      // Map parsed data to database format, expanding comma-separated emails
-      const stacksToInsert: Array<{
-        vendor: string;
-        product_name: string;
-        version: string;
-        org_name: string;
-        email_id: string;
-      }> = [];
+      // Always use auth email as email_id for RLS, store provided emails in email_list
+      const stacksToInsert = parsedData.map((row) => {
+        const rawEmails = row.email_to?.trim();
+        const emailList = rawEmails ? rawEmails : userEmail;
 
-      parsedData.forEach((row) => {
-        const emails = parseEmails(row.email_to);
-        
-        // Create one entry per email
-        emails.forEach(email => {
-          stacksToInsert.push({
-            vendor: row.vendor,
-            product_name: row.product,
-            version: row.version,
-            org_name: userOrganization,
-            email_id: email
-          });
-        });
+        return {
+          vendor: row.vendor,
+          product_name: row.product,
+          version: row.version,
+          org_name: userOrganization,
+          email_id: userEmail,        // Always auth email for RLS
+          email_list: emailList        // Full comma-separated list
+        };
       });
 
       await addMultipleTechStacks(stacksToInsert);
-
-      // Trigger CVE engine in background after upload
       triggerEngineBackground();
 
       toast({
@@ -250,6 +213,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
     setParsedData([]);
     setError(null);
     setSearchQuery("");
+    setSkippedRows(0);
     onClose();
   };
 
@@ -309,21 +273,19 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
             </div>
 
             {/* CPE Structure Help */}
-            <TooltipProvider>
-              <div className="flex items-start gap-2 p-4 rounded-xl bg-muted/50 border border-border">
-                <HelpCircle className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground mb-1">CPE Structure Reference:</p>
-                  <code className="block text-xs bg-background p-2 rounded border border-border mb-2 break-all">
-                    cpe:2.3:type:vendor:product:version:update:edition:lang:sw_edition:target_sw:target_hw:other
-                  </code>
-                  <p className="text-xs">
-                    <strong>Example:</strong>{' '}
-                    <code className="bg-background px-1 py-0.5 rounded">cpe:2.3:a:google:chrome:9.0.597.7:*:*:*:*:*:*:*</code>
-                  </p>
-                </div>
+            <div className="flex items-start gap-2 p-4 rounded-xl bg-muted/50 border border-border">
+              <HelpCircle className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">CPE Structure Reference:</p>
+                <code className="block text-xs bg-background p-2 rounded border border-border mb-2 break-all">
+                  cpe:2.3:type:vendor:product:version:update:edition:lang:sw_edition:target_sw:target_hw:other
+                </code>
+                <p className="text-xs">
+                  <strong>Example:</strong>{' '}
+                  <code className="bg-background px-1 py-0.5 rounded">cpe:2.3:a:google:chrome:9.0.597.7:*:*:*:*:*:*:*</code>
+                </p>
               </div>
-            </TooltipProvider>
+            </div>
 
             {/* Download Template */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
@@ -364,6 +326,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                       e.stopPropagation();
                       setFile(null);
                       setParsedData([]);
+                      setSkippedRows(0);
                     }}
                   >
                     Change
@@ -373,7 +336,7 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                 <>
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                   <p className="font-medium mb-1 text-foreground">Drop your file here or click to browse</p>
-                  <p className="text-sm text-muted-foreground">Supports CSV and Excel files</p>
+                  <p className="text-sm text-muted-foreground">Supports CSV, XLS, and XLSX files</p>
                 </>
               )}
             </div>
@@ -383,6 +346,14 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
               <div className="flex items-center gap-2 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive">
                 <AlertCircle className="h-5 w-5 flex-shrink-0" />
                 <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Skipped rows warning */}
+            {skippedRows > 0 && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-accent/10 border border-accent/30 text-foreground">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p className="text-sm">{skippedRows} row(s) skipped due to missing vendor, product, or version.</p>
               </div>
             )}
 
@@ -396,7 +367,6 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                       Preview ({filteredData.length} of {parsedData.length} rows)
                     </span>
                   </div>
-                  {/* Search Bar */}
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -411,28 +381,28 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
                 
                 <div className="rounded-xl border border-border overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm table-fixed">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium text-foreground">#</th>
-                          <th className="px-4 py-3 text-left font-medium text-foreground">Vendor</th>
-                          <th className="px-4 py-3 text-left font-medium text-foreground">Product</th>
-                          <th className="px-4 py-3 text-left font-medium text-foreground">Version</th>
-                          <th className="px-4 py-3 text-left font-medium text-foreground">Email(s)</th>
-                          <th className="px-4 py-3 text-left font-medium text-foreground"></th>
+                          <th className="w-[40px] px-3 py-3 text-left font-medium text-foreground">#</th>
+                          <th className="w-[22%] px-3 py-3 text-left font-medium text-foreground">Vendor</th>
+                          <th className="w-[22%] px-3 py-3 text-left font-medium text-foreground">Product</th>
+                          <th className="w-[14%] px-3 py-3 text-left font-medium text-foreground">Version</th>
+                          <th className="w-[30%] px-3 py-3 text-left font-medium text-foreground">Email(s)</th>
+                          <th className="w-[40px] px-3 py-3"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {filteredData.slice(0, 5).map((row, i) => (
                           <tr key={i} className="hover:bg-muted/30">
-                            <td className="px-4 py-3 text-foreground">{i + 1}</td>
-                            <td className="px-4 py-3 text-foreground">{row.vendor}</td>
-                            <td className="px-4 py-3 text-foreground">{row.product}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-foreground">{row.version}</td>
-                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                            <td className="px-3 py-3 text-foreground">{i + 1}</td>
+                            <td className="px-3 py-3 text-foreground truncate">{row.vendor}</td>
+                            <td className="px-3 py-3 text-foreground truncate">{row.product}</td>
+                            <td className="px-3 py-3 font-mono text-xs text-foreground">{row.version}</td>
+                            <td className="px-3 py-3 text-muted-foreground text-xs break-all">
                               {row.email_to || <span className="italic">Using: {userEmail}</span>}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
