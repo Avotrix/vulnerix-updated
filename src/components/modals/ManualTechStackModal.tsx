@@ -160,7 +160,7 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                 <HelpCircle className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
                 <p className="text-foreground font-medium">CPE Structure Reference:</p>
               </div>
-              <code className="block text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded font-mono">
+              <code className="block text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded font-mono break-all whitespace-normal">
                 cpe:2.3:type:vendor:product:version:update:edition:lang:sw_edition:target_sw:target_hw:other
               </code>
               <p className="text-xs">
