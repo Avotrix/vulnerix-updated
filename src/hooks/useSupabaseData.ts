@@ -48,10 +48,11 @@ export const useTechStacks = () => {
     version: string;
     org_name: string;
     email_id: string;
+    email_list?: string;
   }) => {
     const { data, error } = await supabase
       .from('tech_stack')
-      .insert(stack)
+      .insert(stack as any)
       .select()
       .single();
 
@@ -66,10 +67,11 @@ export const useTechStacks = () => {
     version: string;
     org_name: string;
     email_id: string;
+    email_list?: string;
   }>) => {
     const { error } = await supabase
       .from('tech_stack')
-      .insert(stacks);
+      .insert(stacks as any);
 
     if (error) throw error;
     await fetchTechStacks();
