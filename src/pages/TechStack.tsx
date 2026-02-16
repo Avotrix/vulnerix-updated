@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import { useTechStacks, useUserSettings } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
 import { TechStack as TechStackType } from "@/lib/mockData";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import TechStackUploadModal from "@/components/modals/TechStackUploadModal";
 import ManualTechStackModal from "@/components/modals/ManualTechStackModal";
@@ -25,6 +30,44 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// Email display component with multi-email support
+const EmailDisplay = ({ emailList }: { emailList: string }) => {
+  const emails = emailList.split(',').map(e => e.trim()).filter(Boolean);
+  
+  if (emails.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+
+  if (emails.length <= 2) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Mail className="h-4 w-4 flex-shrink-0" />
+        <span className="break-all">{emails.join(', ')}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Mail className="h-4 w-4 flex-shrink-0" />
+      <span className="break-all">{emails.slice(0, 2).join(', ')}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="text-xs font-medium text-accent hover:underline whitespace-nowrap">
+            +{emails.length - 2} more
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto max-w-xs p-3" align="start">
+          <p className="text-xs font-medium text-foreground mb-2">All Email IDs</p>
+          <div className="space-y-1">
+            {emails.map((email, i) => (
+              <p key={i} className="text-xs text-muted-foreground">{email}</p>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
 
 const TechStack = () => {
   const { toast } = useToast();
@@ -112,8 +155,9 @@ const TechStack = () => {
     const orgName = user?.user_metadata?.organization || data.organization || 'Default Organization';
 
     try {
-      // Single insert: email_id = auth email (for RLS), email_list = all emails
-      const emailList = data.emails.length > 0 ? data.emails.join(',') : user.email;
+      // email_id = auth email (for RLS), email_list = custom emails or auth email
+      const customEmails = data.emails.filter(e => e.trim());
+      const emailList = customEmails.length > 0 ? customEmails.join(',') : user.email;
       await addTechStack({
         vendor: data.vendorName,
         product_name: data.productName,
@@ -245,10 +289,7 @@ const TechStack = () => {
                     
                     {/* Email */}
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4" />
-                        {stack.emailId}
-                      </div>
+                      <EmailDisplay emailList={stack.emailList || stack.emailId} />
                     </td>
                     
                     {/* Actions */}
