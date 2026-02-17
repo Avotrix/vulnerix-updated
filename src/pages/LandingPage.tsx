@@ -152,26 +152,26 @@ const LandingPage = () => {
                 Request Demo
               </Button>
             </motion.div>
-
-            {/* Hero Visual */}
-            <motion.div initial={{
-              opacity: 0,
-              y: 40
-            }} animate={{
-              opacity: 1,
-              y: 0
-            }} transition={{
-              delay: 0.6
-            }} className="mt-12 relative flex justify-center">
-              <div className="relative mx-auto max-w-6xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
-                <img 
-                  src={vulnerixAnim} 
-                  alt="Vulnerix platform animation" 
-                  className="w-full h-auto block dark:brightness-110 dark:contrast-105"
-                />
-              </div>
-            </motion.div>
           </div>
+
+          {/* Hero Visual */}
+          <motion.div initial={{
+            opacity: 0,
+            y: 40
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.6
+          }} className="mt-12 relative flex justify-center">
+            <div className="relative mx-auto max-w-6xl rounded-2xl border border-border shadow-2xl overflow-hidden">
+              <img 
+                src={vulnerixAnim} 
+                alt="Vulnerix platform animation" 
+                className="w-full h-auto block"
+              />
+            </div>
+          </motion.div>
         </div>
       </section>
 
