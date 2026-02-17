@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
 import TechStackFlowDiagram from "@/components/landing/TechStackFlowDiagram";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
-import vulnerixAnim from "@/assets/Vulnerix_Anim2.gif";
 
 // Import client logos
 import maxAerospaceLogo from "@/assets/clients/max-aerospace-logo.png";
@@ -166,13 +165,41 @@ const LandingPage = () => {
             y: 0
           }} transition={{
             delay: 0.6
-          }} className="mt-20 relative flex justify-center">
+          }} className="mt-20 relative">
             <div className="relative mx-auto max-w-5xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
-              <img 
-                src={vulnerixAnim} 
-                alt="Vulnerix platform animation" 
-                className="w-full h-auto block dark:brightness-110 dark:contrast-105"
-              />
+              <div className="absolute inset-0 bg-gradient-to-br from-navy/5 to-accent/5" />
+              <div className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-muted/50 rounded-xl p-4 border border-border">
+                    <div className="text-xs text-muted-foreground mb-1">Total Products</div>
+                    <div className="text-2xl font-bold text-foreground">247</div>
+                  </div>
+                  <div className="bg-severity-critical/10 rounded-xl p-4 border border-severity-critical/30">
+                    <div className="text-xs text-muted-foreground mb-1">Critical</div>
+                    <div className="text-2xl font-bold text-severity-critical">12</div>
+                  </div>
+                  <div className="bg-severity-high/10 rounded-xl p-4 border border-severity-high/30">
+                    <div className="text-xs text-muted-foreground mb-1">High</div>
+                    <div className="text-2xl font-bold text-severity-high">34</div>
+                  </div>
+                  <div className="bg-severity-medium/10 rounded-xl p-4 border border-severity-medium/30">
+                    <div className="text-xs text-muted-foreground mb-1">Medium</div>
+                    <div className="text-2xl font-bold text-severity-medium">56</div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 space-y-3">
+                  {[1, 2, 3].map((_, i) => <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 border border-border">
+                      <div className="h-8 w-8 rounded-full bg-severity-critical/20 flex items-center justify-center">
+                        <ShieldAlert className="h-4 w-4 text-severity-critical" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-3 w-48 bg-foreground/10 rounded animate-pulse" />
+                      </div>
+                      <div className="h-6 w-16 bg-severity-critical/20 rounded-full" />
+                    </div>)}
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
