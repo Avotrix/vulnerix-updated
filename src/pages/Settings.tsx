@@ -216,17 +216,20 @@ const Settings = () => {
     setIsDeleting(true);
 
     try {
-      // Delete user data from database tables
-      await supabase.from('tech_stack').delete().eq('email_id', user.email);
-      await supabase.from('user_settings').delete().eq('email_id', user.email);
+      // Call server-side edge function for complete account deletion
+      const { error } = await supabase.functions.invoke('delete-user');
       
+      if (error) {
+        throw new Error(error.message || 'Failed to delete account');
+      }
+
       // Clear UI preferences from localStorage
       localStorage.removeItem(THEME_KEY);
       localStorage.removeItem('vulnerix_tour_completed');
 
       toast({
         title: "Account deleted",
-        description: "Your data has been deleted. Signing out...",
+        description: "Your account and all data have been permanently removed.",
       });
 
       await logout();
@@ -235,7 +238,7 @@ const Settings = () => {
       console.error('Failed to delete account:', err);
       toast({
         title: "Error",
-        description: err.message || "Failed to delete account.",
+        description: "Failed to delete account. Please try again.",
         variant: "destructive"
       });
     } finally {
