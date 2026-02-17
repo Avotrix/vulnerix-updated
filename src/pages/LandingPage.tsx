@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
 
+import vulnerixAnim from "@/assets/vulnerix-anim.gif";
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 // Import client logos
@@ -153,6 +154,21 @@ const LandingPage = () => {
             </motion.div>
           </div>
 
+          {/* Animated GIF */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="mt-12 flex justify-center"
+          >
+            <div className="max-w-4xl w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
+              <img
+                src={vulnerixAnim}
+                alt="Vulnerix platform animation"
+                className="w-full h-auto block"
+              />
+            </div>
+          </motion.div>
 
           {/* Hero Visual */}
           <motion.div initial={{
