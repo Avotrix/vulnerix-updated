@@ -15,11 +15,13 @@ import glttLogo from "@/assets/clients/gltt-logo.png";
 import auxinLogo from "@/assets/clients/auxin-logo.png";
 import aagargLogo from "@/assets/clients/aagarg-logo.png";
 import samarthWealthLogo from "@/assets/clients/samarth-wealth-logo.png";
+import fyndnaLogo from "@/assets/clients/fyndna-logo.svg";
 
 // Client data with logo imports (no hyperlinks as per requirement)
 const clientData = [
   { name: "Max Aerospace", logo: maxAerospaceLogo },
   { name: "GLTT Travel", logo: glttLogo },
+  { name: "FynDNA", logo: fyndnaLogo },
   { name: "Auxin Shipping", logo: auxinLogo },
   { name: "A A Garg & Co", logo: aagargLogo },
   { name: "Samarth Wealth", logo: samarthWealthLogo },
