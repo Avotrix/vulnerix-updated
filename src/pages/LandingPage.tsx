@@ -4,7 +4,7 @@ import { Shield, ShieldAlert, ShieldCheck, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import DemoTour from "@/components/DemoTour";
-import TechStackFlowDiagram from "@/components/landing/TechStackFlowDiagram";
+
 import vulnerixLogo from "@/assets/vulnerix-logo.png";
 
 // Import client logos
@@ -153,8 +153,6 @@ const LandingPage = () => {
             </motion.div>
           </div>
 
-          {/* Tech Stack Flow Diagram - Between CTA and Stats */}
-          <TechStackFlowDiagram />
 
           {/* Hero Visual */}
           <motion.div initial={{
