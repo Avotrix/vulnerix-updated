@@ -43,16 +43,16 @@ const LandingPage = () => {
   }];
   const features = [{
     icon: ShieldAlert,
-    title: "Real-time Threat Detection",
-    description: "Instant alerts for vulnerabilities affecting your tech stack with CVSS scoring and severity analysis."
+    title: "Real-Time Vulnerability Detection",
+    description: "Instantly detects vulnerabilities as soon as a vendor, product, and version are added. Delivers detailed vulnerability data including CVE IDs, CVSS scores, severity levels, and affected version ranges."
   }, {
     icon: ShieldCheck,
-    title: "Automated Advisory Mapping",
-    description: "Automatically correlate CVEs with your inventory and receive actionable remediation guidance."
+    title: "Automated CVE & Advisory Correlation",
+    description: "Enriches National Vulnerability Database (NVD) findings with CERT-In advisories (CIVN). Adds impact analysis, exploitability context, and regulatory relevance, turning raw data into actionable intelligence."
   }, {
     icon: Shield,
-    title: "Smart Email Notifications",
-    description: "Critical advisory alerts sent directly to responsible teams based on your tech stack configuration."
+    title: "Smart Alerts & Notifications",
+    description: "Critical and high-risk vulnerabilities automatically trigger alerts to relevant teams. Notifications are risk-based and context-aware, enabling faster and more informed remediation."
   }];
   return <>
       <DemoTour isOpen={showDemo} onClose={() => setShowDemo(false)} />
