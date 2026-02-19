@@ -31,7 +31,7 @@ const LandingPage = () => {
   const [showDemo, setShowDemo] = useState(false);
   const testimonials = [{
     name: "Sarah Chen",
-    role: "CISO, Max Aerospace",
+    role: "CISO, FynDNA",
     content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
     avatar: "SC"
   }, {
@@ -41,7 +41,7 @@ const LandingPage = () => {
     avatar: "MR"
   }, {
     name: "Emily Thompson",
-    role: "VP Engineering, FynDNA",
+    role: "VP Engineering, Max Aerospace",
     content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
     avatar: "ET"
   }];
@@ -110,7 +110,7 @@ const LandingPage = () => {
             }}>
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-6">
                 <Shield className="h-4 w-4" />
-                Enterprise Vulnerability Intelligence
+                Vulnerabilities - Identify. Remediate. Comply.
               </span>
             </motion.div>
 
@@ -122,9 +122,9 @@ const LandingPage = () => {
               y: 0
             }} transition={{
               delay: 0.3
-}} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-foreground leading-tight mb-6">
-              Protect Your Business<br />
-              <span className="text-gradient text-[#d43702]">Before It's Too Late.</span>
+}} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-foreground leading-tight mb-4">
+              Close Vulnerability Gaps<br />
+              <span className="text-gradient text-[#d43702]">Before Hackers Exploit IT.</span>
             </motion.h1>
 
             <motion.p initial={{
@@ -191,27 +191,19 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Clients Section */}
-      <section id="clients" className="py-16 border-y border-border bg-muted/30">
+      {/* Clients Section - Infinite Slider */}
+      <section id="clients" className="py-16 border-y border-border bg-muted/30 overflow-hidden">
         <div className="container mx-auto px-6">
-          <motion.p initial={{
-            opacity: 0
-          }} whileInView={{
-            opacity: 1
-          }} viewport={{
-            once: true
-          }} className="text-center text-sm font-medium text-foreground mb-8">
+          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center text-sm font-medium text-foreground mb-8">
             TRUSTED BY OUR CLIENTS
           </motion.p>
-          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-            {clientData.map((client, i) => (
-              <motion.div
-                key={client.name}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="flex items-center justify-center p-4 rounded-xl bg-white border border-border min-w-[140px] h-[80px]"
+        </div>
+        <div className="relative group">
+          <div className="flex animate-scroll-left gap-6 md:gap-10 w-max group-hover:[animation-play-state:paused]">
+            {[...clientData, ...clientData].map((client, i) => (
+              <div
+                key={`${client.name}-${i}`}
+                className="flex items-center justify-center p-4 rounded-xl bg-white border border-border min-w-[140px] h-[80px] shrink-0"
                 title={client.name}
               >
                 <img 
@@ -219,7 +211,7 @@ const LandingPage = () => {
                   alt={`${client.name} logo`}
                   className="max-h-12 max-w-[120px] object-contain"
                 />
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -274,18 +266,10 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-24 bg-navy-gradient">
+      {/* Testimonials Section - Infinite Slider */}
+      <section id="testimonials" className="py-24 bg-navy-gradient overflow-hidden">
         <div className="container mx-auto px-6">
-          <motion.div initial={{
-            opacity: 0,
-            y: 20
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} className="text-center max-w-2xl mx-auto mb-16">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-4xl font-display font-bold text-white mb-4">
               Trusted by Security Leaders
             </h2>
@@ -293,19 +277,12 @@ const LandingPage = () => {
               See what our customers say about Vulnerix
             </p>
           </motion.div>
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, i) => <motion.div key={testimonial.name} initial={{
-              opacity: 0,
-              y: 20
-            }} whileInView={{
-              opacity: 1,
-              y: 0
-            }} viewport={{
-              once: true
-            }} transition={{
-              delay: i * 0.1
-            }} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8">
+        <div className="relative group">
+          <div className="flex animate-scroll-left gap-8 w-max group-hover:[animation-play-state:paused]">
+            {[...testimonials, ...testimonials].map((testimonial, i) => (
+              <div key={`${testimonial.name}-${i}`} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 min-w-[340px] max-w-[400px] shrink-0">
                 <p className="text-white leading-relaxed mb-6">
                   "{testimonial.content}"
                 </p>
@@ -318,7 +295,8 @@ const LandingPage = () => {
                     <div className="text-sm text-white/70">{testimonial.role}</div>
                   </div>
                 </div>
-              </motion.div>)}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -376,15 +354,6 @@ const LandingPage = () => {
             </div>
           </div>
           
-          {/* Admin Login Link - Bottom of Home Page Only */}
-          <div className="mt-8 pt-6 border-t border-border/50 text-center">
-            <Link 
-              to="/admin" 
-              className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-            >
-              Admin Login
-            </Link>
-          </div>
         </div>
       </footer>
     </div>
