@@ -135,7 +135,7 @@ const LandingPage = () => {
               y: 0
             }} transition={{
               delay: 0.4
-            }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. Stay ahead of threats with automated alerts and actionable insights.</motion.p>
+            }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. Stay ahead of threats with alerts and AI actionable insights.</motion.p>
 
             <motion.div initial={{
               opacity: 0,
