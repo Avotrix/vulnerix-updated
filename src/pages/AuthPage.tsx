@@ -310,7 +310,7 @@ const AuthPage = () => {
               {[
                 { label: 'CVEs Tracked', value: '50K+' },
                 { label: 'Companies', value: '50+' },
-                { label: 'Alerts Sent', value: '10M+' }
+                { label: 'Alerts Sent', value: '1000+' }
               ].map((stat) => (
                 <div key={stat.label}>
                   <div className="text-2xl font-display font-bold text-cyan-400">{stat.value}</div>
