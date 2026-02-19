@@ -192,6 +192,10 @@ export default {
 				to: {
 					strokeDashoffset: '-20'
 				}
+			},
+			'scroll-left': {
+				'0%': { transform: 'translateX(0)' },
+				'100%': { transform: 'translateX(-50%)' }
 			}
 		},
 		animation: {
@@ -203,7 +207,8 @@ export default {
 			'scale-in': 'scale-in 0.3s ease-out',
 			'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
 			'engine-pulse': 'engine-pulse 4s ease-in-out infinite',
-			'flow': 'flow 3s linear infinite'
+			'flow': 'flow 3s linear infinite',
+			'scroll-left': 'scroll-left 25s linear infinite'
 		},
   		boxShadow: {
   			glow: '0 0 30px hsl(var(--cyan) / 0.3)',

@@ -309,7 +309,7 @@ const AuthPage = () => {
             <div className="mt-12 grid grid-cols-3 gap-6">
               {[
                 { label: 'CVEs Tracked', value: '50K+' },
-                { label: 'Companies', value: '1,200+' },
+                { label: 'Companies', value: '50+' },
                 { label: 'Alerts Sent', value: '10M+' }
               ].map((stat) => (
                 <div key={stat.label}>
