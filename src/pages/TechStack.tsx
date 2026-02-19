@@ -104,6 +104,7 @@ const TechStack = () => {
     vendorName: string;
     productName: string;
     productVersion: string;
+    emailList: string;
   }) => {
     if (!editingStack) return;
 
@@ -111,7 +112,8 @@ const TechStack = () => {
       await updateTechStack(editingStack.id, {
         vendor: data.vendorName,
         product_name: data.productName,
-        version: data.productVersion
+        version: data.productVersion,
+        email_list: data.emailList
       });
       
       // Trigger CVE engine in background after update

@@ -1,16 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, Building2, Plus } from "lucide-react";
+import { X, Save, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { TechStack } from "@/lib/mockData";
 
 interface EditTechStackModalProps {
@@ -20,42 +13,12 @@ interface EditTechStackModalProps {
     vendorName: string;
     productName: string;
     productVersion: string;
+    emailList: string;
   }) => void;
   techStack: TechStack | null;
 }
 
-const STANDARD_VENDORS = [
-  "Adobe",
-  "Amazon Web Services",
-  "Apache",
-  "Apple",
-  "Atlassian",
-  "Cisco",
-  "Docker",
-  "Elastic",
-  "Google",
-  "HashiCorp",
-  "IBM",
-  "Jenkins",
-  "JetBrains",
-  "Kubernetes",
-  "Linux",
-  "Microsoft",
-  "MongoDB",
-  "MySQL",
-  "Nginx",
-  "Node.js",
-  "Oracle",
-  "PostgreSQL",
-  "Python",
-  "Red Hat",
-  "Salesforce",
-  "SAP",
-  "Slack",
-  "Splunk",
-  "Ubuntu",
-  "VMware",
-];
+const MAX_EMAILS = 5;
 
 const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechStackModalProps) => {
   const [formData, setFormData] = useState({
@@ -63,48 +26,58 @@ const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechSt
     productName: '',
     productVersion: ''
   });
+  const [emails, setEmails] = useState<string[]>(['']);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isCustomVendor, setIsCustomVendor] = useState(false);
 
   // Pre-fill form when techStack changes
   useEffect(() => {
     if (techStack) {
-      const vendorExists = STANDARD_VENDORS.includes(techStack.vendorName);
-      setIsCustomVendor(!vendorExists);
       setFormData({
         vendorName: techStack.vendorName,
         productName: techStack.productName,
         productVersion: techStack.productVersion
       });
+      // Parse email list
+      const emailSource = techStack.emailList || techStack.emailId || '';
+      const parsed = emailSource.split(',').map(e => e.trim()).filter(Boolean);
+      setEmails(parsed.length > 0 ? parsed : [techStack.emailId || '']);
     }
   }, [techStack]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    // Vendor validation
     if (!formData.vendorName.trim()) {
-      newErrors.vendorName = 'Vendor name is required';
-    } else if (!isCustomVendor && !STANDARD_VENDORS.includes(formData.vendorName)) {
-      newErrors.vendorName = 'Please select a valid vendor or add a custom one';
+      newErrors.vendorName = 'Vendor name is required.';
     } else if (formData.vendorName.length < 2) {
-      newErrors.vendorName = 'Vendor name must be at least 2 characters';
+      newErrors.vendorName = 'Vendor name must be at least 2 characters.';
     }
     
     if (!formData.productName.trim()) {
-      newErrors.productName = 'Product name is required';
+      newErrors.productName = 'Product name is required.';
     } else if (formData.productName.length < 2) {
-      newErrors.productName = 'Product name must be at least 2 characters';
+      newErrors.productName = 'Product name must be at least 2 characters.';
     }
     
-    // Version format validation
     if (!formData.productVersion.trim()) {
-      newErrors.productVersion = 'Version is required';
+      newErrors.productVersion = 'Version is required.';
     } else {
       const versionRegex = /^[vV]?[\d]+([._-][\d\w]+)*$/;
       if (!versionRegex.test(formData.productVersion.trim())) {
-        newErrors.productVersion = 'Invalid version format (e.g., 1.0.0, v2.1, 2024.1)';
+        newErrors.productVersion = 'Invalid version format (e.g., 1.0.0, v2.1, 2024.1).';
       }
+    }
+
+    // Email validation
+    const validEmails = emails.filter(e => e.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (validEmails.length === 0) {
+      newErrors.emails = 'At least one valid email is required.';
+    }
+
+    // Check for duplicate emails
+    const uniqueEmails = new Set(validEmails.map(e => e.toLowerCase()));
+    if (uniqueEmails.size !== validEmails.length) {
+      newErrors.emails = 'Duplicate emails are not allowed.';
     }
     
     setErrors(newErrors);
@@ -113,30 +86,36 @@ const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechSt
 
   const handleSubmit = () => {
     if (validateForm()) {
-      onSubmit(formData);
+      const validEmails = emails.filter(e => e.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      onSubmit({
+        ...formData,
+        emailList: validEmails.join(',')
+      });
       handleClose();
     }
   };
 
   const handleClose = () => {
-    setFormData({
-      vendorName: '',
-      productName: '',
-      productVersion: ''
-    });
+    setFormData({ vendorName: '', productName: '', productVersion: '' });
+    setEmails(['']);
     setErrors({});
-    setIsCustomVendor(false);
     onClose();
   };
 
-  const handleVendorSelect = (value: string) => {
-    if (value === '__custom__') {
-      setIsCustomVendor(true);
-      setFormData(prev => ({ ...prev, vendorName: '' }));
-    } else {
-      setIsCustomVendor(false);
-      setFormData(prev => ({ ...prev, vendorName: value }));
+  const addEmailField = () => {
+    if (emails.length < MAX_EMAILS) {
+      setEmails(prev => [...prev, '']);
     }
+  };
+
+  const removeEmailField = (index: number) => {
+    if (emails.length > 1) {
+      setEmails(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateEmail = (index: number, value: string) => {
+    setEmails(prev => prev.map((email, i) => i === index ? value : email));
   };
 
   if (!isOpen || !techStack) return null;
@@ -165,7 +144,7 @@ const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechSt
               </div>
               <div>
                 <h2 className="text-xl font-display font-semibold text-foreground">Edit Tech Stack</h2>
-                <p className="text-sm text-muted-foreground">Update product information</p>
+                <p className="text-sm text-muted-foreground">Update product information.</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={handleClose}>
@@ -185,53 +164,13 @@ const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechSt
 
             <div className="space-y-2">
               <Label htmlFor="vendorName">Vendor Name</Label>
-              {!isCustomVendor ? (
-                <Select
-                  value={STANDARD_VENDORS.includes(formData.vendorName) ? formData.vendorName : undefined}
-                  onValueChange={handleVendorSelect}
-                >
-                  <SelectTrigger className={errors.vendorName ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select a vendor" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 bg-card">
-                    {STANDARD_VENDORS.map((vendor) => (
-                      <SelectItem key={vendor} value={vendor}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          {vendor}
-                        </div>
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="__custom__">
-                      <div className="flex items-center gap-2 text-accent">
-                        <Plus className="h-4 w-4" />
-                        Add Custom Vendor
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    id="vendorName"
-                    placeholder="e.g., Microsoft, Google, Apache, Oracle"
-                    value={formData.vendorName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
-                    className={errors.vendorName ? 'border-destructive' : ''}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setIsCustomVendor(false);
-                      setFormData(prev => ({ ...prev, vendorName: '' }));
-                    }}
-                    className="text-xs text-muted-foreground"
-                  >
-                    ← Back to vendor list
-                  </Button>
-                </div>
-              )}
+              <Input
+                id="vendorName"
+                placeholder="e.g., Microsoft, Google, Apache, Oracle"
+                value={formData.vendorName}
+                onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
+                className={errors.vendorName ? 'border-destructive' : ''}
+              />
               {errors.vendorName && <p className="text-xs text-destructive">{errors.vendorName}</p>}
             </div>
 
@@ -259,12 +198,53 @@ const EditTechStackModal = ({ isOpen, onClose, onSubmit, techStack }: EditTechSt
               {errors.productVersion && <p className="text-xs text-destructive">{errors.productVersion}</p>}
             </div>
 
-            {/* Email - Read-only display */}
+            {/* Email Fields - Editable */}
             <div className="space-y-2">
-              <Label className="text-muted-foreground">Email ID</Label>
-              <div className="px-3 py-2 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                {techStack.emailId}
+              <div className="flex items-center justify-between">
+                <Label>Email ID(s)</Label>
+                {emails.length < MAX_EMAILS && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addEmailField}
+                    className="text-xs text-accent"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Email
+                  </Button>
+                )}
               </div>
+              
+              <div className="space-y-2">
+                {emails.map((email, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={email}
+                      onChange={(e) => updateEmail(index, e.target.value)}
+                      className="flex-1"
+                    />
+                    {emails.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEmailField(index)}
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {errors.emails && <p className="text-xs text-destructive">{errors.emails}</p>}
+              <p className="text-xs text-muted-foreground">
+                Max {MAX_EMAILS} emails. All emails will receive vulnerability alerts.
+              </p>
             </div>
           </div>
 

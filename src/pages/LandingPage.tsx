@@ -16,6 +16,7 @@ import auxinLogo from "@/assets/clients/auxin-logo.png";
 import aagargLogo from "@/assets/clients/aagarg-logo.png";
 import samarthWealthLogo from "@/assets/clients/samarth-wealth-logo.png";
 import fyndnaLogo from "@/assets/clients/fyndna-logo.svg";
+import hemSpicesLogo from "@/assets/clients/hem-spices-logo.png";
 
 // Client data with logo imports (no hyperlinks as per requirement)
 const clientData = [
@@ -25,26 +26,55 @@ const clientData = [
   { name: "Auxin Shipping", logo: auxinLogo },
   { name: "A A Garg & Co", logo: aagargLogo },
   { name: "Samarth Wealth", logo: samarthWealthLogo },
+  { name: "Hem Spices", logo: hemSpicesLogo },
 ];
 
 const LandingPage = () => {
   const [showDemo, setShowDemo] = useState(false);
-  const testimonials = [{
-    name: "Sarah Chen",
-    role: "CISO, FynDNA",
-    content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
-    avatar: "SC"
-  }, {
-    name: "Michael Rodriguez",
-    role: "Security Director, Auxin Shipping",
-    content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
-    avatar: "MR"
-  }, {
-    name: "Emily Thompson",
-    role: "VP Engineering, Max Aerospace",
-    content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
-    avatar: "ET"
-  }];
+  const testimonials = [
+    {
+      name: "Sarah Chen",
+      role: "CISO, Max Aerospace",
+      content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
+      avatar: "SC"
+    },
+    {
+      name: "Michael Rodriguez",
+      role: "Security Director, Auxin Shipping",
+      content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
+      avatar: "MR"
+    },
+    {
+      name: "Emily Thompson",
+      role: "VP Engineering, FynDNA",
+      content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
+      avatar: "ET"
+    },
+    {
+      name: "Rajesh Sharma",
+      role: "IT Head, A A Garg & Co",
+      content: "Vulnerix gave us complete visibility into our tech stack vulnerabilities. Compliance audits are now effortless.",
+      avatar: "RS"
+    },
+    {
+      name: "Priya Nair",
+      role: "CTO, Samarth Wealth",
+      content: "The real-time alerting system is a game-changer. We reduced our mean time to remediate by 60%.",
+      avatar: "PN"
+    },
+    {
+      name: "David Kim",
+      role: "Security Analyst, GLTT Travel",
+      content: "The CERT-In advisory correlation feature is invaluable. It gives us context that no other platform provides.",
+      avatar: "DK"
+    },
+    {
+      name: "Dhir Karania",
+      role: "Director, Hem Spices",
+      content: "Even as a non-tech company, Vulnerix helped us secure our digital infrastructure with minimal effort.",
+      avatar: "DK"
+    }
+  ];
   const features = [{
     icon: ShieldAlert,
     title: "Real-Time Vulnerability Detection",
@@ -52,7 +82,7 @@ const LandingPage = () => {
   }, {
     icon: ShieldCheck,
     title: "Automated CVE & Advisory Correlation",
-    description: "Enriches National Vulnerability Database (NVD) findings with CERT-In advisories (CIVN). Adds impact analysis, exploitability context, and regulatory relevance, turning raw data into actionable intelligence."
+    description: "Enriches National Vulnerability Database (NVD) findings with CERT-In advisories (CIVN). Adds impact analysis, exploitability context, and regulatory relevance, turning raw data into actionable AI insights."
   }, {
     icon: Shield,
     title: "Smart Alerts & Notifications",
@@ -233,7 +263,7 @@ const LandingPage = () => {
               Core Engine Secrets
             </h2>
             <p className="text-lg text-muted-foreground">
-              Powered by advanced threat intelligence and automated vulnerability correlation
+              Powered by advanced threat intelligence and automated vulnerability correlation.
             </p>
           </motion.div>
 
@@ -274,7 +304,7 @@ const LandingPage = () => {
               Trusted by Security Leaders
             </h2>
             <p className="text-lg text-white/80">
-              See what our customers say about Vulnerix
+              See what our customers say about Vulnerix.
             </p>
           </motion.div>
         </div>
