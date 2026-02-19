@@ -182,14 +182,6 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                 <span className="text-foreground font-medium">Example:</span>{" "}
                 <code className="text-muted-foreground font-mono">cpe:2.3:a:google:chrome:9.0.597.7:*:*:*:*:*:*:*</code>
               </p>
-              <a 
-                href="https://nvd.nist.gov/products/cpe/search" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-accent hover:underline text-xs"
-              >
-                Search NVD CPE Directory <ExternalLink className="h-3 w-3" />
-              </a>
             </div>
 
             {/* Organization (auto-filled, read-only display) */}
