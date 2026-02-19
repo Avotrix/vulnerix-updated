@@ -17,11 +17,11 @@ const demoSteps: DemoStep[] = [
     description: "Your central command center for security monitoring. Get a real-time snapshot of your entire security posture at a glance.",
     icon: LayoutDashboard,
     features: [
-      "Total Products: View count of all monitored software in your tech stack",
-      "Critical Vulnerabilities: See high-priority threats requiring immediate attention",
-      "Severity Breakdown: Visual charts showing Critical, High, Medium, and Low severity distribution",
-      "Recent Advisories: Quick access to the latest vulnerability alerts affecting your stack",
-      "Trend Analysis: Historical graphs showing vulnerability trends over time"
+      "Total Products: View count of all monitored software in your tech stack.",
+      "Critical Vulnerabilities: See high-priority threats requiring immediate attention.",
+      "Severity Breakdown: Visual charts showing Critical, High, Medium, and Low severity distribution.",
+      "Recent Advisories: Quick access to the latest vulnerability alerts with actionable AI insights for your stack.",
+      "Trend Analysis: Historical graphs showing vulnerability trends over time."
     ]
   },
   {
@@ -29,11 +29,11 @@ const demoSteps: DemoStep[] = [
     description: "Manage your complete technology inventory. Upload, edit, and organize all software assets your organization uses.",
     icon: Database,
     features: [
-      "Upload Tech Stack: Import via CSV/Excel with template enforcement (Sr No., Vendor Name, Product Name, Product Version, Email ID)",
-      "Manual Entry: Add individual entries with Organization, Vendor, Product, Version, and Email ID fields",
-      "Edit Entries: Update Vendor, Product, Version, and Email ID (Organization is locked)",
-      "Search & Filter: Quickly find specific products in your inventory",
-      "Delete Items: Remove outdated or incorrect entries with confirmation"
+      "Upload Tech Stack: Import via CSV/Excel with template enforcement (Sr No., Vendor Name, Product Name, Product Version, Email ID).",
+      "Manual Entry: Add individual entries with Vendor, Product, Version, and Email ID.",
+      "Edit Entries: Update Vendor, Product, Version, and Email ID (Organization is locked).",
+      "Search & Filter: Quickly find specific products in your inventory.",
+      "Delete Items: Remove outdated or incorrect entries with confirmation."
     ]
   },
   {
@@ -41,12 +41,11 @@ const demoSteps: DemoStep[] = [
     description: "Browse comprehensive vulnerability intelligence. Filter, search, and analyze CVEs affecting your tech stack with detailed remediation guidance.",
     icon: ShieldAlert,
     features: [
-      "CVE Database: Access detailed vulnerability information including CVSS scores",
-      "Severity Filtering: Filter by Critical, High, Medium, or Low severity",
-      "Search Functionality: Find specific CVEs, vendors, or products",
-      "Pagination: Browse advisories with 5 items per page",
-      "View All: Open complete advisory list in a new tab",
-      "Version Information: See affected version ranges when available"
+      "CVE Database: Access detailed vulnerability information including CVSS scores.",
+      "Severity Filtering: Filter by Critical, High, Medium, or Low severity.",
+      "Search Functionality: Find specific CVEs, vendors, or products.",
+      "View All: Open complete advisory list in a new tab.",
+      "Version Information: See affected version ranges when available."
     ]
   },
   {
@@ -54,12 +53,12 @@ const demoSteps: DemoStep[] = [
     description: "Customize your Vulnerix experience. Manage your personal information and configure notification preferences.",
     icon: User,
     features: [
-      "Profile Management: Update your name, email, organization, phone, and role",
-      "Email Notifications: Toggle alerts for new vulnerabilities",
-      "Critical Alerts: Enable instant notifications for high-severity threats",
-      "Weekly Digest: Receive weekly summary reports",
-      "Theme Settings: Choose between light, dark, or system themes",
-      "Auto-Refresh: Configure automatic dashboard data refresh intervals"
+      "Profile Management: Update your name, email, organization, phone, and role.",
+      "Email Notifications: Toggle alerts for new vulnerabilities.",
+      "Critical Alerts: Enable instant notifications for high-severity threats.",
+      "Weekly Digest: Receive weekly summary reports.",
+      "Theme Settings: Choose between light, dark, or system themes.",
+      "Auto-Refresh: Configure automatic dashboard data refresh intervals."
     ]
   },
   {
@@ -67,11 +66,11 @@ const demoSteps: DemoStep[] = [
     description: "Get help when you need it. Reach out to our security team for assistance, questions, or feedback.",
     icon: Phone,
     features: [
-      "Contact Form: Submit inquiries with subject and detailed message",
-      "Email Support: Direct email contact for urgent matters",
-      "Phone Support: Call our support line during business hours",
-      "Office Location: Find our headquarters address",
-      "Confirmation: Receive acknowledgment when your message is sent"
+      "Contact Form: Submit inquiries with subject and detailed message.",
+      "Email Support: Direct email contact for urgent matters.",
+      "Phone Support: Call our support line during business hours.",
+      "Office Location: Find our headquarters address.",
+      "Confirmation: Receive acknowledgment when your message is sent."
     ]
   },
   {
@@ -79,12 +78,12 @@ const demoSteps: DemoStep[] = [
     description: "Vulnerix provides enterprise-grade vulnerability intelligence to protect your organization proactively.",
     icon: Bell,
     features: [
-      "Real-time Monitoring: Continuous scanning for new vulnerabilities",
-      "Smart Alerts: Automated email notifications to responsible team members",
-      "Data Persistence: All data stored securely in your browser",
-      "No Backend Required: Frontend-only solution for maximum privacy",
-      "Template-Based Upload: Standardized CSV/Excel import format",
-      "Responsive Design: Works seamlessly on desktop and mobile devices"
+      "Real-time Monitoring: Continuous scanning for new vulnerabilities.",
+      "Smart Alerts: Automated email notifications to responsible team members.",
+      "Data Persistence: All data stored securely in your browser.",
+      "No Backend Required: Frontend-only solution for maximum privacy.",
+      "Template-Based Upload: Standardized CSV/Excel import format.",
+      "Responsive Design: Works seamlessly on desktop and mobile devices."
     ]
   }
 ];
@@ -197,21 +196,6 @@ const DemoTour = forwardRef<HTMLDivElement, DemoTourProps>(({ isOpen, onClose },
 
             {/* Footer - Fixed */}
             <div className="p-6 border-t border-border bg-card">
-              {/* Progress dots */}
-              <div className="flex justify-center gap-2 mb-4">
-                {demoSteps.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentStep(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      index === currentStep 
-                        ? 'w-6 bg-accent' 
-                        : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                    }`}
-                  />
-                ))}
-              </div>
-
               {/* Actions */}
               <div className="flex items-center justify-between">
                 <Button

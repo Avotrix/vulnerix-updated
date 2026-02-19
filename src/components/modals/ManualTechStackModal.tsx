@@ -154,6 +154,21 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
 
           {/* Content */}
           <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* NVD CPE Directory Instruction */}
+            <div className="p-4 rounded-xl bg-accent/10 border border-accent/30">
+              <p className="text-sm text-foreground">
+                <strong>Before filling your sheet:</strong> Please find the correct Vendor and Product from the official NVD CPE directory and enter the exact values.
+              </p>
+              <a 
+                href="https://nvd.nist.gov/products/cpe/search" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-accent hover:underline mt-2"
+              >
+                Open NVD CPE Search <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+
             {/* CPE Structure Reference */}
             <div className="p-3 rounded-lg bg-muted border border-border text-sm space-y-2">
               <div className="flex items-start gap-2">

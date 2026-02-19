@@ -69,11 +69,59 @@ export const useTechStacks = () => {
     email_id: string;
     email_list?: string;
   }>) => {
-    const { error } = await supabase
-      .from('tech_stack')
-      .insert(stacks as any);
+    if (!user?.email) throw new Error('Not authenticated');
 
-    if (error) throw error;
+    // Fetch existing entries for this user to check duplicates
+    const { data: existing } = await supabase
+      .from('tech_stack')
+      .select('*')
+      .eq('email_id', user.email);
+
+    const existingMap = new Map<string, any>();
+    (existing || []).forEach(row => {
+      const key = `${(row.vendor || '').toLowerCase()}|${(row.product_name || '').toLowerCase()}|${(row.version || '').toLowerCase()}|${(row.org_name || '').toLowerCase()}`;
+      existingMap.set(key, row);
+    });
+
+    const toInsert: typeof stacks = [];
+    const toUpdate: Array<{ id: string; email_list: string }> = [];
+
+    for (const stack of stacks) {
+      const key = `${stack.vendor.toLowerCase()}|${stack.product_name.toLowerCase()}|${(stack.version || '').toLowerCase()}|${stack.org_name.toLowerCase()}`;
+      const existingRow = existingMap.get(key);
+
+      if (existingRow) {
+        // Merge emails
+        const existingEmails = (existingRow.email_list || existingRow.email_id || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+        const newEmails = (stack.email_list || stack.email_id || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+        const merged = [...new Set([...existingEmails, ...newEmails])];
+        const mergedStr = merged.join(',');
+        if (mergedStr !== (existingRow.email_list || '')) {
+          toUpdate.push({ id: existingRow.id, email_list: mergedStr });
+        }
+      } else {
+        toInsert.push(stack);
+        // Add to map to prevent duplicates within the same batch
+        existingMap.set(key, { ...stack, email_list: stack.email_list });
+      }
+    }
+
+    // Batch insert new entries
+    if (toInsert.length > 0) {
+      const { error } = await supabase
+        .from('tech_stack')
+        .insert(toInsert as any);
+      if (error) throw error;
+    }
+
+    // Update existing entries with merged emails
+    for (const update of toUpdate) {
+      await supabase
+        .from('tech_stack')
+        .update({ email_list: update.email_list })
+        .eq('id', update.id);
+    }
+
     await fetchTechStacks();
   };
 
@@ -81,6 +129,7 @@ export const useTechStacks = () => {
     vendor: string;
     product_name: string;
     version: string;
+    email_list: string;
   }>) => {
     const { error } = await supabase
       .from('tech_stack')
