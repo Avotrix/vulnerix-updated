@@ -26,7 +26,7 @@ const clientData = [
   { name: "Auxin Shipping", logo: auxinLogo },
   { name: "A A Garg & Co", logo: aagargLogo },
   { name: "Samarth Wealth", logo: samarthWealthLogo },
-  { name: "Hem Spices", logo: hemSpicesLogo },
+  { name: "Hem Spices", logo: hemSpicesLogo, className: "scale-150" },
 ];
 
 const LandingPage = () => {
@@ -239,7 +239,7 @@ const LandingPage = () => {
                 <img 
                   src={client.logo} 
                   alt={`${client.name} logo`}
-                  className="max-h-12 max-w-[120px] object-contain"
+                  className={`max-h-12 max-w-[120px] object-contain ${(client as any).className || ''}`}
                 />
               </div>
             ))}

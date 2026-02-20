@@ -304,11 +304,11 @@ const TechStackUploadModal = ({ isOpen, onClose }: TechStackUploadModalProps) =>
               <div className="text-sm text-muted-foreground">
                 <p className="font-medium text-foreground mb-1">CPE Structure Reference:</p>
                 <code className="block text-xs bg-background p-2 rounded border border-border mb-2 break-all">
-                  cpe:2.3:type:vendor:product:version:update:edition:lang:sw_edition:target_sw:target_hw:other
+                  cpe:2.3:type:vendor:product:version
                 </code>
                 <p className="text-xs">
                   <strong>Example:</strong>{' '}
-                  <code className="bg-background px-1 py-0.5 rounded">cpe:2.3:a:google:chrome:9.0.597.7:*:*:*:*:*:*:*</code>
+                  <code className="bg-background px-1 py-0.5 rounded">cpe:2.3:a:google:chrome:9.0.597.7</code>
                 </p>
               </div>
             </div>
