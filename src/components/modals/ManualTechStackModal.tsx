@@ -176,11 +176,11 @@ const ManualTechStackModal = ({ isOpen, onClose, onSubmit }: ManualTechStackModa
                 <p className="text-foreground font-medium">CPE Structure Reference:</p>
               </div>
               <code className="block text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded font-mono break-all whitespace-normal">
-                cpe:2.3:type:vendor:product:version:update:edition:lang:sw_edition:target_sw:target_hw:other
+                cpe:2.3:type:vendor:product:version
               </code>
               <p className="text-xs">
                 <span className="text-foreground font-medium">Example:</span>{" "}
-                <code className="text-muted-foreground font-mono">cpe:2.3:a:google:chrome:9.0.597.7:*:*:*:*:*:*:*</code>
+                <code className="text-muted-foreground font-mono">cpe:2.3:a:google:chrome:9.0.597.7</code>
               </p>
             </div>
 
