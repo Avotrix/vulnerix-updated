@@ -26,7 +26,7 @@ const clientData = [
   { name: "Auxin Shipping", logo: auxinLogo },
   { name: "A A Garg & Co", logo: aagargLogo },
   { name: "Samarth Wealth", logo: samarthWealthLogo },
-  { name: "Hem Spices", logo: hemSpicesLogo, className: "scale-150" },
+  { name: "Hem Spices", logo: hemSpicesLogo, className: "scale-[2.5]" },
 ];
 
 const LandingPage = () => {
