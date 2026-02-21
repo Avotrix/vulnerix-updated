@@ -20,61 +20,61 @@ import hemSpicesLogo from "@/assets/clients/hem-spices-logo.png";
 
 // Client data with logo imports (no hyperlinks as per requirement)
 const clientData = [
-  { name: "Max Aerospace", logo: maxAerospaceLogo },
-  { name: "GLTT Travel", logo: glttLogo },
-  { name: "FynDNA", logo: fyndnaLogo },
-  { name: "Auxin Shipping", logo: auxinLogo },
-  { name: "A A Garg & Co", logo: aagargLogo },
-  { name: "Samarth Wealth", logo: samarthWealthLogo },
-  { name: "Hem Spices", logo: hemSpicesLogo, className: "scale-[1.59]" },
-];
+{ name: "Max Aerospace", logo: maxAerospaceLogo },
+{ name: "GLTT Travel", logo: glttLogo },
+{ name: "FynDNA", logo: fyndnaLogo },
+{ name: "Auxin Shipping", logo: auxinLogo },
+{ name: "A A Garg & Co", logo: aagargLogo },
+{ name: "Samarth Wealth", logo: samarthWealthLogo },
+{ name: "Hem Spices", logo: hemSpicesLogo, className: "scale-[1.59]" }];
+
 
 const LandingPage = () => {
   const [showDemo, setShowDemo] = useState(false);
   const testimonials = [
-    {
-      name: "Sarah Chen",
-      role: "CISO, Max Aerospace",
-      content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
-      avatar: "SC"
-    },
-    {
-      name: "Michael Rodriguez",
-      role: "Security Director, Auxin Shipping",
-      content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
-      avatar: "MR"
-    },
-    {
-      name: "Emily Thompson",
-      role: "VP Engineering, FynDNA",
-      content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
-      avatar: "ET"
-    },
-    {
-      name: "Rajesh Sharma",
-      role: "IT Head, A A Garg & Co",
-      content: "Vulnerix gave us complete visibility into our tech stack vulnerabilities. Compliance audits are now effortless.",
-      avatar: "RS"
-    },
-    {
-      name: "Priya Nair",
-      role: "CTO, Samarth Wealth",
-      content: "The real-time alerting system is a game-changer. We reduced our mean time to remediate by 60%.",
-      avatar: "PN"
-    },
-    {
-      name: "David Kim",
-      role: "Security Analyst, GLTT Travel",
-      content: "The CERT-In advisory correlation feature is invaluable. It gives us context that no other platform provides.",
-      avatar: "DK"
-    },
-    {
-      name: "Dhir Karania",
-      role: "Director, Hem Spices",
-      content: "Even as a non-tech company, Vulnerix helped us secure our digital infrastructure with minimal effort.",
-      avatar: "DK"
-    }
-  ];
+  {
+    name: "Sarah Chen",
+    role: "CISO, Max Aerospace",
+    content: "Vulnerix transformed our vulnerability management. We now identify and remediate threats 3x faster.",
+    avatar: "SC"
+  },
+  {
+    name: "Michael Rodriguez",
+    role: "Security Director, Auxin Shipping",
+    content: "The automated advisory system has saved us countless hours. Critical vulnerabilities no longer slip through.",
+    avatar: "MR"
+  },
+  {
+    name: "Emily Thompson",
+    role: "VP Engineering, FynDNA",
+    content: "Best vulnerability intelligence platform we've used. The integration with our stack was seamless.",
+    avatar: "ET"
+  },
+  {
+    name: "Rajesh Sharma",
+    role: "IT Head, A A Garg & Co",
+    content: "Vulnerix gave us complete visibility into our tech stack vulnerabilities. Compliance audits are now effortless.",
+    avatar: "RS"
+  },
+  {
+    name: "Priya Nair",
+    role: "CTO, Samarth Wealth",
+    content: "The real-time alerting system is a game-changer. We reduced our mean time to remediate by 60%.",
+    avatar: "PN"
+  },
+  {
+    name: "David Kim",
+    role: "Security Analyst, GLTT Travel",
+    content: "The CERT-In advisory correlation feature is invaluable. It gives us context that no other platform provides.",
+    avatar: "DK"
+  },
+  {
+    name: "Dhir Karania",
+    role: "Director, Hem Spices",
+    content: "Even as a non-tech company, Vulnerix helped us secure our digital infrastructure with minimal effort.",
+    avatar: "DK"
+  }];
+
   const features = [{
     icon: ShieldAlert,
     title: "Real-Time Vulnerability Detection",
@@ -152,7 +152,7 @@ const LandingPage = () => {
               y: 0
             }} transition={{
               delay: 0.3
-}} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-foreground leading-tight mb-4">
+            }} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold text-foreground leading-tight mb-4">
               Close Vulnerability Gaps<br />
               <span className="text-gradient text-[#d43702]">Before Hackers Exploit IT.</span>
             </motion.h1>
@@ -165,7 +165,7 @@ const LandingPage = () => {
               y: 0
             }} transition={{
               delay: 0.4
-            }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your entire technology stack. Stay ahead of threats with alerts and AI actionable insights.</motion.p>
+            }} className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">Real-time vulnerability monitoring and advisory intelligence for your Technology stack. Stay ahead of threats with alerts and AI actionable insights.</motion.p>
 
             <motion.div initial={{
               opacity: 0,
@@ -192,14 +192,14 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
-            className="mt-12 flex justify-center"
-          >
+            className="mt-12 flex justify-center">
+
             <div className="max-w-4xl w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
               <img
                 src={vulnerixAnim}
                 alt="Vulnerix platform animation"
-                className="w-full h-auto block"
-              />
+                className="w-full h-auto block" />
+
             </div>
           </motion.div>
 
@@ -208,14 +208,14 @@ const LandingPage = () => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="mt-12 flex justify-center"
-          >
+            className="mt-12 flex justify-center">
+
             <div className="max-w-5xl w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
               <img
                 src={vulnerixDashboard}
                 alt="Vulnerix dashboard preview"
-                className="w-full h-auto block"
-              />
+                className="w-full h-auto block" />
+
             </div>
           </motion.div>
         </div>
@@ -230,19 +230,19 @@ const LandingPage = () => {
         </div>
         <div className="relative group">
           <div className="flex animate-scroll-left gap-6 md:gap-10 w-max group-hover:[animation-play-state:paused]">
-            {[...clientData, ...clientData].map((client, i) => (
-              <div
-                key={`${client.name}-${i}`}
-                className="flex items-center justify-center p-4 rounded-xl bg-white border border-border min-w-[140px] h-[80px] shrink-0"
-                title={client.name}
-              >
-                <img 
-                  src={client.logo} 
-                  alt={`${client.name} logo`}
-                  className={`max-h-12 max-w-[120px] object-contain ${(client as any).className || ''}`}
-                />
+            {[...clientData, ...clientData].map((client, i) =>
+            <div
+              key={`${client.name}-${i}`}
+              className="flex items-center justify-center p-4 rounded-xl bg-white border border-border min-w-[140px] h-[80px] shrink-0"
+              title={client.name}>
+
+                <img
+                src={client.logo}
+                alt={`${client.name} logo`}
+                className={`max-h-12 max-w-[120px] object-contain ${(client as any).className || ''}`} />
+
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -311,8 +311,8 @@ const LandingPage = () => {
 
         <div className="relative group">
           <div className="flex animate-scroll-left gap-8 w-max group-hover:[animation-play-state:paused]">
-            {[...testimonials, ...testimonials].map((testimonial, i) => (
-              <div key={`${testimonial.name}-${i}`} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 min-w-[340px] max-w-[400px] shrink-0">
+            {[...testimonials, ...testimonials].map((testimonial, i) =>
+            <div key={`${testimonial.name}-${i}`} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 min-w-[340px] max-w-[400px] shrink-0">
                 <p className="text-white leading-relaxed mb-6">
                   "{testimonial.content}"
                 </p>
@@ -326,7 +326,7 @@ const LandingPage = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
