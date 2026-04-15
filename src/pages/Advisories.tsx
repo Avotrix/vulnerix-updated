@@ -101,8 +101,7 @@ const Advisories = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleSendEmail = (advisory: Advisory) => {
-    // Get email from vendor mapping in Tech Stack
+  const handleSendEmail = useCallback(async (advisory: Advisory) => {
     const vendorKey = advisory.tech_stack_vendor?.toLowerCase() || '';
     const targetEmail = vendorEmailMap[vendorKey] || advisory.email_to;
     
@@ -118,15 +117,65 @@ const Advisories = () => {
     setEmailStatuses(prev => ({ ...prev, [advisory.cve_id]: 'queued' }));
     
     toast({
-      title: "Email queued",
-      description: `Notification will be sent to ${targetEmail}`,
+      title: "Sending email...",
+      description: `Sending vulnerability alert to ${targetEmail}`,
     });
 
-    // Simulate email sending
-    setTimeout(() => {
+    try {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1a1a2e; color: #fff; padding: 20px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0;">⚠️ Vulnerability Alert: ${advisory.cve_id}</h2>
+          </div>
+          <div style="border: 1px solid #e0e0e0; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Severity:</td><td style="padding: 8px 0;">${advisory.Severity}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">CVSS Score:</td><td style="padding: 8px 0;">${advisory.cvss_score}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Vendor:</td><td style="padding: 8px 0;">${advisory.tech_stack_vendor}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Product:</td><td style="padding: 8px 0;">${advisory.tech_stack_product}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Version:</td><td style="padding: 8px 0;">${advisory.tech_stack_version}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Attack Vector:</td><td style="padding: 8px 0;">${advisory.attack_vector}</td></tr>
+            </table>
+            <hr style="margin: 16px 0; border: none; border-top: 1px solid #e0e0e0;" />
+            <p style="color: #333; line-height: 1.6;"><strong>Description:</strong><br/>${advisory.Description}</p>
+            ${advisory.Reference_URL ? `<p><a href="${advisory.Reference_URL}" style="color: #3b82f6;">View Full Advisory →</a></p>` : ''}
+            <hr style="margin: 16px 0; border: none; border-top: 1px solid #e0e0e0;" />
+            <p style="color: #999; font-size: 12px;">Sent by Vulnerix Vulnerability Intelligence Platform</p>
+          </div>
+        </div>
+      `;
+
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: targetEmail,
+          subject: `[${advisory.Severity}] Vulnerability Alert: ${advisory.cve_id} - ${advisory.tech_stack_product}`,
+          html: emailHtml,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to send email');
+      }
+
       setEmailStatuses(prev => ({ ...prev, [advisory.cve_id]: 'sent' }));
-    }, 2000);
-  };
+      toast({
+        title: "Email sent ✓",
+        description: `Alert sent successfully to ${targetEmail}`,
+      });
+    } catch (error: any) {
+      console.error('Email send failed:', error);
+      setEmailStatuses(prev => {
+        const updated = { ...prev };
+        delete updated[advisory.cve_id];
+        return updated;
+      });
+      toast({
+        title: "Email failed",
+        description: error?.message || "Could not send email. Check SMTP configuration.",
+        variant: "destructive",
+      });
+    }
+  }, [vendorEmailMap, toast]);
 
   // Get target email for display
   const getTargetEmail = (advisory: Advisory) => {
