@@ -26,6 +26,7 @@ import { getCertInToggle } from "@/lib/storage";
 import { Advisory, TechStack } from "@/lib/mockData";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const ITEMS_PER_PAGE = 5;
 
